@@ -7,6 +7,7 @@ export function Detail() {
   const addTodo = useStore((s) => s.addTodo);
   const toggleTodo = useStore((s) => s.toggleTodo);
   const setNotes = useStore((s) => s.setNotes);
+  const dismissSession = useStore((s) => s.dismissSession);
 
   const s = sessions.find((x) => x.id === selectedId);
   const [draft, setDraft] = useState('');
@@ -49,6 +50,11 @@ export function Detail() {
   return (
     <section className="detail">
       <div className="d-head">
+        <button
+          className="dismiss"
+          title="Dismiss from board (reappears if it fires another event)"
+          onClick={() => { if (confirm(`Dismiss "${s.project}" from the board?`)) dismissSession(s.id); }}
+        >×</button>
         <div className="badge">
           <span className={`led-lg ${meta.cls}`} />
           <span className="st" style={{ color: `var(--${meta.cls})` }}>{statusLabel}</span>

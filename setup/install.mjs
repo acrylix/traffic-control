@@ -17,7 +17,11 @@ const SETTINGS = process.env.CLAUDE_SETTINGS ||
   join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'), 'settings.json');
 
 const BASE = `http://localhost:${PORT}`;
-const cmd = (slug) => `curl -sm2 -X POST ${BASE}/e/${slug} --data-binary @- || true`;
+// Hardened curl: -s silences progress/errors, -m2 caps at 2s (server hung),
+// -o /dev/null discards the response body (so it never leaks into hook stdout
+// that Claude reads), 2>/dev/null catches any stray stderr, || true forces
+// exit 0 so a downed collector never affects the Claude session.
+const cmd = (slug) => `curl -sm2 -o /dev/null -X POST ${BASE}/e/${slug} --data-binary @- 2>/dev/null || true`;
 const hook = (slug) => ({ matcher: '*', hooks: [{ type: 'command', command: cmd(slug) }] });
 
 const EVENTS = {

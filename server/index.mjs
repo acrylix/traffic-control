@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 import { normalize, freshSession, applyEvent, sweepStale } from './state.mjs';
 import { loadStore, getProject, addTodo, toggleTodo, removeTodo, setNotes, DATA_DIR } from './store.mjs';
+import { notifyTransition, notifyStatus } from './notify.mjs';
 
 const PORT = Number(process.env.GC_PORT || 4317);
 const TOKEN = process.env.GC_INGEST_TOKEN || '';      // sink seam: empty = open (localhost)
@@ -96,9 +97,12 @@ const server = createServer(async (req, res) => {
     const n = normalize(body);
     const id = n.sessionId || `anon:${n.cwd || 'unknown'}`;
     let s = sessions.get(id);
-    if (!s) { s = freshSession(id); sessions.set(id, s); }
+    const isNew = !s;
+    if (isNew) { s = freshSession(id); sessions.set(id, s); }
+    const prev = isNew ? null : s.status;
     const cli = searchParams.get('cli') || 'claude';
     applyEvent(s, kind, n, cli);
+    if (prev !== null && prev !== s.status) notifyTransition(prev, s.status, s);
     broadcast();
     return json(res, 200, { ok: true });   // fast ack; hook never blocks Claude
   }
@@ -142,6 +146,14 @@ const server = createServer(async (req, res) => {
   if (pathname === '/api/note' && req.method === 'POST') {
     const b = await readBody(req);
     setNotes(b.cwd, b.text); broadcast();
+    return json(res, 200, { ok: true });
+  }
+
+  // remove a session from the board (will reappear if it fires a new hook event)
+  if (pathname === '/api/session/remove' && req.method === 'POST') {
+    const b = await readBody(req);
+    if (b.id) sessions.delete(b.id);
+    broadcast();
     return json(res, 200, { ok: true });
   }
 
@@ -192,8 +204,10 @@ setInterval(() => {
 }, 15000);
 
 server.listen(PORT, () => {
+  const n = notifyStatus();
   console.log(`▲ Ground Control collector  →  http://localhost:${PORT}`);
   console.log(`  data dir : ${DATA_DIR}`);
   console.log(`  auth     : ${TOKEN ? 'token required' : 'open (localhost)'}`);
   console.log(`  stale    : ${Math.round(STALE_MS / 1000)}s`);
+  console.log(`  notify   : ${n.enabled ? `${n.backend} · ${n.events.join(',')} · sound=${n.sound} · sticky=${n.sticky ? 'on' : 'off'}` : 'disabled'}`);
 });

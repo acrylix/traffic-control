@@ -62,13 +62,13 @@ Add to `~/.claude/settings.json` — every hook is a plain `curl` to localhost:
 ```jsonc
 {
   "hooks": {
-    "SessionStart":      [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -X POST http://localhost:4317/e/session-start --data-binary @- || true" }]}],
-    "UserPromptSubmit":  [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -X POST http://localhost:4317/e/prompt        --data-binary @- || true" }]}],
-    "PreToolUse":        [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -X POST http://localhost:4317/e/pre-tool      --data-binary @- || true" }]}],
-    "PostToolUse":       [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -X POST http://localhost:4317/e/post-tool     --data-binary @- || true" }]}],
-    "PermissionRequest": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -X POST http://localhost:4317/e/permission     --data-binary @- || true" }]}],
-    "Notification":      [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -X POST http://localhost:4317/e/notify         --data-binary @- || true" }]}],
-    "Stop":              [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -X POST http://localhost:4317/e/stop           --data-binary @- || true" }]}]
+    "SessionStart":      [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4317/e/session-start --data-binary @- 2>/dev/null || true" }]}],
+    "UserPromptSubmit":  [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4317/e/prompt        --data-binary @- 2>/dev/null || true" }]}],
+    "PreToolUse":        [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4317/e/pre-tool      --data-binary @- 2>/dev/null || true" }]}],
+    "PostToolUse":       [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4317/e/post-tool     --data-binary @- 2>/dev/null || true" }]}],
+    "PermissionRequest": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4317/e/permission     --data-binary @- 2>/dev/null || true" }]}],
+    "Notification":      [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4317/e/notify         --data-binary @- 2>/dev/null || true" }]}],
+    "Stop":              [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4317/e/stop           --data-binary @- 2>/dev/null || true" }]}]
   }
 }
 ```

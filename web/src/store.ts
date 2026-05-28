@@ -19,6 +19,7 @@ interface GCState {
   toggleTodo: (cwd: string | null, id: string) => void;
   removeTodo: (cwd: string | null, id: string) => void;
   setNotes: (cwd: string | null, text: string) => void;
+  dismissSession: (id: string) => void;
 }
 
 const emptyTally: Record<Status, number> = {
@@ -43,6 +44,10 @@ export const useStore = create<GCState>((set) => ({
   select: (id) => set({ selectedId: id }),
 
   connect: () => {
+    // deep-link from a notification: ?s=<sessionId> pins selection on first load
+    const pin = new URLSearchParams(location.search).get('s');
+    if (pin) set({ selectedId: pin });
+
     const open = () => {
       const es = new EventSource(`${API}/stream`);
       es.onopen = () => set({ connected: true });
@@ -76,4 +81,5 @@ export const useStore = create<GCState>((set) => ({
   toggleTodo: (cwd, id) => post('/api/todo/toggle', { cwd, id }),
   removeTodo: (cwd, id) => post('/api/todo/remove', { cwd, id }),
   setNotes: (cwd, text) => post('/api/note', { cwd, text }),
+  dismissSession: (id) => post('/api/session/remove', { id }),
 }));

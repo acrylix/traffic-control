@@ -211,6 +211,15 @@ header::after {
 .d-head .st{ font-family:var(--font-cond); font-weight:700; font-size:11px; letter-spacing:1.5px; text-transform:uppercase;}
 .d-head h2{ font-size:17px; font-weight:700; letter-spacing:.3px; margin-bottom:4px; }
 .d-head .path{ font-size:10.5px; color:var(--ink-faint); word-break:break-all; }
+.d-head .dismiss{
+  position:absolute; top:12px; right:14px;
+  width:22px; height:22px; border-radius:3px;
+  background:transparent; border:1px solid var(--hair);
+  color:var(--ink-faint); font-size:14px; line-height:1; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition: color .12s, border-color .12s, background .12s;
+}
+.d-head .dismiss:hover{ color:var(--stop); border-color:rgba(255,93,93,.4); background:rgba(255,93,93,.05); }
 
 .d-stats{ display:grid; grid-template-columns:1fr 1fr 1fr; border-bottom:1px solid var(--hair); }
 .d-stat{ padding:11px 14px; border-right:1px solid var(--hair);}
