@@ -8,7 +8,7 @@ import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { createInterface } from 'node:readline/promises';
 
-const PORT = Number(process.env.GC_PORT || 4317);
+const PORT = Number(process.env.GC_PORT || 4242);
 const YES = process.argv.includes('--yes') || process.argv.includes('-y');
 const TIER2 = !process.argv.includes('--tier1'); // default = full (tool stream)
 const STATUSLINE = process.argv.includes('--statusline');

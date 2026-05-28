@@ -1,0 +1,9 @@
+node_modules
+server/public
+.data
+mockups
+.git
+.gitignore
+*.log
+*.gc-backup
+.DS_Store

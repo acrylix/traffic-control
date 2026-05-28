@@ -15,7 +15,7 @@ import { notifyTransition, notifyStatus } from './notify.mjs';
 import { startTail, stopTail, stopAllTails, applyTranscriptLine, tailingCount } from './transcript.mjs';
 import { getFocusedTerminal, focusWindow } from './terminal.mjs';
 
-const PORT = Number(process.env.GC_PORT || 4317);
+const PORT = Number(process.env.GC_PORT || 4242);
 const TOKEN = process.env.GC_INGEST_TOKEN || '';      // sink seam: empty = open (localhost)
 const STALE_MS = Number(process.env.GC_STALE_MS || 6 * 60 * 1000);
 const PUBLIC_DIR = join(fileURLToPath(new URL('.', import.meta.url)), 'public');

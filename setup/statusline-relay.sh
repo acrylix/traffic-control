@@ -21,7 +21,7 @@ INPUT=$(cat)
 # ever appears in the line Claude renders.
 printf '%s' "$INPUT" \
   | curl -sm1 -o /dev/null \
-      -X POST "${GC_INGEST_URL:-http://localhost:4317}/e/beat" \
+      -X POST "${GC_INGEST_URL:-http://localhost:4242}/e/beat" \
       --data-binary @- 2>/dev/null \
   || true
 

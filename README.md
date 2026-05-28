@@ -83,14 +83,33 @@ its terminal window**, and native macOS alerts the moment it needs you.
 ```bash
 npm install
 npm run build      # builds the UI into server/public
-npm run server     # collector + UI at http://localhost:4317
+npm run server     # collector + UI at http://localhost:4242
 ```
 
 For development with hot reload:
 
 ```bash
-npm run dev        # collector on :4317, Vite on :5173
+npm run dev        # collector on :4242, Vite on :5173
 ```
+
+## Run it always-on
+
+Three commands, one-time:
+
+```bash
+npm run docker:up    # build + run in background (restarts forever)
+npm run init -- --yes # add hooks to ~/.claude/settings.json
+npm run hostname     # map ground.control → 127.0.0.1 (sudo, once)
+```
+
+Open **<http://ground.control:4242/>** — done. Restart any running `claude`
+sessions so they pick up the new hooks.
+
+Manage: `npm run docker:logs` · `npm run docker:down` · `npm run docker:restart`.
+
+> Docker mode disables macOS notifications and yabai jump-to-window
+> (a Linux container can't reach the host). If you want those, use
+> `npm run server` natively instead.
 
 ## Connect Claude Code
 
@@ -111,13 +130,13 @@ Add to `~/.claude/settings.json` — every hook is a plain `curl` to localhost:
 ```jsonc
 {
   "hooks": {
-    "SessionStart":      [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4317/e/session-start --data-binary @- 2>/dev/null || true" }]}],
-    "UserPromptSubmit":  [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4317/e/prompt        --data-binary @- 2>/dev/null || true" }]}],
-    "PreToolUse":        [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4317/e/pre-tool      --data-binary @- 2>/dev/null || true" }]}],
-    "PostToolUse":       [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4317/e/post-tool     --data-binary @- 2>/dev/null || true" }]}],
-    "PermissionRequest": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4317/e/permission   --data-binary @- 2>/dev/null || true" }]}],
-    "Notification":      [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4317/e/notify       --data-binary @- 2>/dev/null || true" }]}],
-    "Stop":              [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4317/e/stop         --data-binary @- 2>/dev/null || true" }]}]
+    "SessionStart":      [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4242/e/session-start --data-binary @- 2>/dev/null || true" }]}],
+    "UserPromptSubmit":  [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4242/e/prompt        --data-binary @- 2>/dev/null || true" }]}],
+    "PreToolUse":        [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4242/e/pre-tool      --data-binary @- 2>/dev/null || true" }]}],
+    "PostToolUse":       [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4242/e/post-tool     --data-binary @- 2>/dev/null || true" }]}],
+    "PermissionRequest": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4242/e/permission   --data-binary @- 2>/dev/null || true" }]}],
+    "Notification":      [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4242/e/notify       --data-binary @- 2>/dev/null || true" }]}],
+    "Stop":              [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -sm2 -o /dev/null -X POST http://localhost:4242/e/stop         --data-binary @- 2>/dev/null || true" }]}]
   }
 }
 ```
@@ -153,7 +172,7 @@ starts flowing.
 
 | var | default | meaning |
 |-----|---------|---------|
-| `GC_PORT` | `4317` | collector port |
+| `GC_PORT` | `4242` | collector port |
 | `GC_DATA_DIR` | `~/.ground-control` | where todos/notes persist |
 | `GC_STALE_MS` | `360000` | silence before a session goes stale |
 | `GC_TAIL_MS` | `2000` | transcript-tail poll interval (ms) |

@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import type { RateLimits, Session, Snapshot, Status } from './types';
 
-// In dev (Vite on :5173) talk to the collector on :4317; in production the
+// In dev (Vite on :5173) talk to the collector on :4242; in production the
 // collector serves this bundle same-origin, so relative URLs just work.
 const API =
   import.meta.env.VITE_GC_URL ??
-  (location.port === '5173' ? 'http://localhost:4317' : '');
+  (location.port === '5173' ? 'http://localhost:4242' : '');
 
 interface GCState {
   sessions: Session[];

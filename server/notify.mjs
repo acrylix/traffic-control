@@ -10,7 +10,7 @@ const SOUND = process.env.GC_NOTIFY_SOUND || 'Glass'; // 'none' to silence
 const EVENTS = new Set(
   (process.env.GC_NOTIFY_EVENTS || 'waiting,blocked').split(',').map((s) => s.trim()),
 );
-const PORT = Number(process.env.GC_PORT || 4317);
+const PORT = Number(process.env.GC_PORT || 4242);
 // Sticky default ON: "needs you" alerts should NOT auto-dismiss.
 const STICKY = process.env.GC_NOTIFY_STICKY !== '0';
 // Which next-states deserve a sticky alert (require terminal-notifier).

@@ -10,7 +10,12 @@
     "dev": "node scripts/dev.mjs",
     "build": "vite build",
     "start": "npm run build && node server/index.mjs",
-    "init": "node setup/install.mjs"
+    "init": "node setup/install.mjs",
+    "hostname": "bash setup/hostname.sh",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:restart": "docker compose restart"
   },
   "dependencies": {
     "react": "^18.3.1",

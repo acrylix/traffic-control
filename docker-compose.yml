@@ -1,0 +1,25 @@
+services:
+  ground-control:
+    build: .
+    image: ground-control:latest
+    container_name: ground-control
+    restart: unless-stopped
+    ports:
+      # host:container — change the host side if 4242 is taken locally.
+      - "4242:4242"
+    volumes:
+      # Claude transcripts: mount the host home at the *same path* inside the
+      # container so absolute transcript_path values from hook payloads
+      # (e.g. /Users/michael/.claude/projects/<cwd>/<id>.jsonl) resolve
+      # identically without any path translation in the collector.
+      - "${HOME}/.claude:${HOME}/.claude:ro"
+      # Persistent store for your todos / notes / per-project state.
+      - "${HOME}/.ground-control:/data"
+    environment:
+      - GC_PORT=4242
+      - GC_DATA_DIR=/data
+      - GC_STALE_MS=360000
+      # macOS notifications & yabai can't reach the host from inside the
+      # container — keep these off in Docker mode. Run natively
+      # (`npm run server`) if you want notifications + jump-to-window.
+      - GC_NOTIFY=0
