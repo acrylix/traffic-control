@@ -86,16 +86,59 @@ function Strip({ s }: { s: Session }) {
         <div className="timer">{timer}</div>
         <div className="seen">{s.status === 'working' ? 'active now' : ago(s.lastSeenAt, now)}</div>
         <span className="todo-pill">◴ <b>{done}</b>/{total}</span>
-        {s.terminal ? (
-          <button
-            className="jump-pill"
-            title={`Jump to ${s.terminal.app}${s.terminal.title ? ' · ' + s.terminal.title : ''}`}
-            onClick={(e) => { e.stopPropagation(); focusSession(s.id); }}
-          >↗ jump</button>
-        ) : (
-          <span className="jump-pill disabled" title="No terminal bound yet — send a prompt in the terminal to bind it">↗ —</span>
-        )}
       </div>
+
+      {s.terminal ? (
+        <button
+          type="button"
+          className="gate gate-bound"
+          title={`Jump to ${s.terminal.app}${s.terminal.title ? ' · ' + s.terminal.title : ''}`}
+          aria-label={`Jump to ${s.terminal.app}`}
+          onClick={(e) => { e.stopPropagation(); focusSession(s.id); }}
+        >
+          <span className="gate-tag">GATE</span>
+          <span className="gate-row">
+            <span className="gate-chev" aria-hidden="true">
+              <i>›</i><i>›</i><i>›</i>
+            </span>
+            <span className="gate-dest">{shortAppName(s.terminal.app)}</span>
+          </span>
+          <span className="gate-runway" aria-hidden="true" />
+        </button>
+      ) : (
+        <div
+          className="gate gate-unbound"
+          title="No terminal bound — send a prompt in your terminal to bind this session"
+          aria-label="Terminal not bound"
+        >
+          <span className="gate-tag">— — —</span>
+          <span className="gate-row">
+            <span className="gate-chev" aria-hidden="true">
+              <i>·</i><i>·</i><i>·</i>
+            </span>
+            <span className="gate-dest">NO LINK</span>
+          </span>
+          <span className="gate-runway gate-runway-off" aria-hidden="true" />
+        </div>
+      )}
     </div>
   );
+}
+
+// Compact, fixed-width destination label for the gate.
+// Most terminal apps have predictable short names; the rest fall back to
+// uppercased first 6 chars so the gate column never gets stretched.
+function shortAppName(app: string): string {
+  const map: Record<string, string> = {
+    WarpTerminal: 'WARP',
+    Warp: 'WARP',
+    iTerm2: 'ITERM',
+    iTerm: 'ITERM',
+    Terminal: 'TERM',
+    WezTerm: 'WEZTERM',
+    kitty: 'KITTY',
+    Alacritty: 'ALCRT',
+    Ghostty: 'GHOSTTY',
+  };
+  return map[app] || app.toUpperCase().slice(0, 7);
 }

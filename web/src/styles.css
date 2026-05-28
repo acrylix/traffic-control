@@ -175,7 +175,7 @@ header::after {
 .board-head .c{ font-size:10px; color:var(--ink-faint); letter-spacing:1px;}
 
 .strip {
-  display: grid; grid-template-columns: 6px 56px 1fr 150px 116px; align-items: stretch;
+  display: grid; grid-template-columns: 6px 56px 1fr 150px 116px 104px; align-items: stretch;
   background: linear-gradient(90deg, var(--panel), #0e1115); border: 1px solid var(--hair);
   border-radius: 5px; margin-bottom: 8px; cursor: pointer; overflow: hidden; position: relative;
   transition: border-color .14s, transform .14s;
@@ -312,22 +312,123 @@ header::after {
 }
 .d-head .dismiss:hover{ color:var(--stop); border-color:rgba(255,93,93,.4); background:rgba(255,93,93,.05); }
 
-/* ↗ jump-to-terminal pill — sits in the meta column next to todo-pill,
-   always visible so it's obviously clickable. Disabled-looking when the
-   session has no terminal binding yet. */
-.meta .jump-pill{
-  display:inline-flex; align-self:flex-end; align-items:center; gap:5px;
-  font-family:var(--font-mono); font-size:10px;
-  color:var(--ink-dim); background:rgba(52,226,154,.05);
-  border:1px solid var(--hair); border-radius:10px;
-  padding:1px 8px; cursor:pointer;
-  transition: color .12s, border-color .12s, background .12s;
+/* ─── APPROACH GATE ───────────────────────────────────────────────────────
+   Primary jump-to-terminal action. Full-height block on the right of each
+   strip. Three marching chevrons vector toward the destination terminal
+   name; runway lights pulse at the bottom edge. Hover spools the chevrons
+   up to landing-light cadence; press lands the aircraft.
+
+   Unbound state mirrors the geometry but reads as "no signal" — diagonal
+   runway-closure hatch, static dots, dim runway. Same footprint, no layout
+   shift when a session becomes bound after its first prompt. */
+
+.strip .gate{
+  appearance:none; border:none; border-left:1px solid var(--hair);
+  position:relative; overflow:hidden;
+  padding:9px 11px 10px;
+  display:flex; flex-direction:column; justify-content:space-between; align-items:stretch;
+  background:transparent; cursor:pointer; text-align:left;
+  font-family:var(--font-cond);
+  transition: background .15s, border-left-color .15s;
 }
-.meta .jump-pill:hover{ color:var(--go); border-color:rgba(52,226,154,.45); background:rgba(52,226,154,.12); }
-.meta .jump-pill.disabled{
-  color:var(--ink-faint); background:transparent; cursor:default; opacity:.55;
+
+/* BOUND — energized gate, primary action */
+.gate-bound{
+  background: linear-gradient(180deg, rgba(52,226,154,.05), rgba(52,226,154,.13));
 }
-.meta .jump-pill.disabled:hover{ color:var(--ink-faint); border-color:var(--hair); background:transparent; }
+.gate-bound::before{
+  /* directional glow that suggests the aircraft is parked at this gate */
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background: radial-gradient(120% 75% at 110% 50%, rgba(52,226,154,.20), transparent 62%);
+  opacity:.55; transition: opacity .2s;
+}
+.gate-bound:hover{
+  background: linear-gradient(180deg, rgba(52,226,154,.10), rgba(52,226,154,.22));
+  border-left-color: rgba(52,226,154,.55);
+}
+.gate-bound:hover::before{ opacity:1; }
+.gate-bound:active{
+  background: linear-gradient(180deg, rgba(52,226,154,.30), rgba(52,226,154,.42));
+  transform:scale(.97);
+}
+.gate-bound:focus-visible{
+  outline: 2px solid var(--go); outline-offset:-2px;
+}
+
+/* UNBOUND — runway closed, awaiting bind */
+.gate-unbound{
+  cursor:default;
+  background:
+    repeating-linear-gradient(135deg,
+      transparent 0 6px,
+      rgba(255,255,255,.018) 6px 8px
+    );
+}
+
+/* tag — top-left ATC label */
+.gate .gate-tag{
+  font-size:8.5px; letter-spacing:2.5px; font-weight:700;
+  color:var(--ink-faint); text-transform:uppercase;
+  position:relative; z-index:1;
+}
+.gate-bound .gate-tag{ color:rgba(52,226,154,.65); }
+
+/* main row — marching chevrons + destination */
+.gate .gate-row{
+  display:flex; align-items:baseline; gap:6px;
+  position:relative; z-index:1; line-height:1;
+}
+.gate .gate-chev{
+  display:inline-flex; align-items:baseline; gap:0;
+  font-weight:800; font-size:15px; line-height:1;
+  letter-spacing:-1px;
+  color:var(--go);
+}
+.gate-unbound .gate-chev{ color:var(--ink-faint); letter-spacing:2px; }
+.gate .gate-chev i{
+  display:inline-block; font-style:normal;
+  text-shadow: 0 0 6px var(--go-glow);
+}
+.gate-bound .gate-chev i{
+  opacity:.2;
+  animation: gate-march 1.5s ease-in-out infinite;
+}
+.gate-bound .gate-chev i:nth-child(1){ animation-delay: 0s; }
+.gate-bound .gate-chev i:nth-child(2){ animation-delay: .18s; }
+.gate-bound .gate-chev i:nth-child(3){ animation-delay: .36s; }
+.gate-bound:hover .gate-chev i{ animation-duration:.65s; }
+.gate-unbound .gate-chev i{ opacity:.4; text-shadow:none; }
+
+@keyframes gate-march{
+  0%   { opacity:.15; transform: translateX(-3px); }
+  45%  { opacity:1;   transform: translateX(2px); }
+  100% { opacity:.15; transform: translateX(-3px); }
+}
+
+.gate .gate-dest{
+  font-weight:800; font-size:16px; line-height:1;
+  letter-spacing:1.4px; text-transform:uppercase;
+  color:var(--go); text-shadow: 0 0 9px var(--go-glow);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.gate-unbound .gate-dest{
+  font-size:10.5px; font-weight:700; letter-spacing:1.4px;
+  color:var(--ink-faint); text-shadow:none;
+}
+
+/* runway lights along the bottom edge */
+.gate .gate-runway{
+  height:3px; border-radius:1px;
+  background: repeating-linear-gradient(90deg, var(--go) 0 5px, transparent 5px 9px);
+  box-shadow: 0 0 8px var(--go-glow);
+  opacity:.5; transition: opacity .15s;
+  position:relative; z-index:1;
+}
+.gate-bound:hover .gate-runway{ opacity:1; }
+.gate-runway-off{
+  background: repeating-linear-gradient(90deg, var(--ink-faint) 0 3px, transparent 3px 7px);
+  box-shadow:none; opacity:.25;
+}
 
 /* full pill version for the detail panel */
 .focus-pill{
