@@ -118,8 +118,11 @@ const server = createServer(async (req, res) => {
     applyEvent(s, kind, n, cli);
     if (prev !== null && prev !== s.status) notifyTransition(prev, s.status, s);
     // Bind to the focused OS window on session-start and on every user
-    // prompt. These are the moments focus is most reliably in the terminal.
-    // Other hooks (post-tool, notify) can fire while the user is elsewhere.
+    // prompt — the only moments focus is reliably in the terminal where Claude
+    // is running. Tool/notify events can fire while the user is in another
+    // app (or even another terminal tab), so binding on those would risk
+    // pointing the focus button at the wrong window. After a collector restart,
+    // existing sessions remain unbound until their next user prompt.
     if (kind === 'session-start' || kind === 'prompt') {
       getFocusedTerminal()
         .then((term) => {

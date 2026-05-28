@@ -86,15 +86,16 @@ function Strip({ s }: { s: Session }) {
         <div className="timer">{timer}</div>
         <div className="seen">{s.status === 'working' ? 'active now' : ago(s.lastSeenAt, now)}</div>
         <span className="todo-pill">◴ <b>{done}</b>/{total}</span>
+        {s.terminal ? (
+          <button
+            className="jump-pill"
+            title={`Jump to ${s.terminal.app}${s.terminal.title ? ' · ' + s.terminal.title : ''}`}
+            onClick={(e) => { e.stopPropagation(); focusSession(s.id); }}
+          >↗ jump</button>
+        ) : (
+          <span className="jump-pill disabled" title="No terminal bound yet — send a prompt in the terminal to bind it">↗ —</span>
+        )}
       </div>
-
-      {s.terminal && (
-        <button
-          className="focus-btn"
-          title={`Jump to ${s.terminal.app} · ${s.terminal.title || 'window'}`}
-          onClick={(e) => { e.stopPropagation(); focusSession(s.id); }}
-        >↗</button>
-      )}
     </div>
   );
 }
