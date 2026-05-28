@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useStore } from './store';
 import { Board } from './Board';
 import { Detail } from './Detail';
-import { ago } from './util';
-import type { Status } from './types';
+import { ago, sev, until } from './util';
+import type { RateLimits, Status } from './types';
 
 export function App() {
   const connect = useStore((s) => s.connect);
@@ -55,12 +55,39 @@ function Header() {
         <div className="t stop"><span className="dot" /><span className="num">{tally.blocked}</span><span className="lbl">blocked</span></div>
       </div>
 
+      <RateLimitsWidget />
+
       <div className="cmd">
         <span>⌕</span>
         <input placeholder="filter sessions / jump to project…" />
         <kbd>⌘K</kbd>
       </div>
     </header>
+  );
+}
+
+function RateLimitsWidget() {
+  const rl = useStore((s) => s.rateLimits);
+  const now = useStore((s) => s.now);
+  if (!rl) return null;
+  return (
+    <div className="rate-limits" title="Anthropic rate-limit usage — from statusline heartbeat">
+      <div className="rl-label">RATE</div>
+      <RLBar label="5H" pct={rl.rl5hPct} resetsAt={rl.rl5hResetsAt} now={now} />
+      <RLBar label="7D" pct={rl.rl7dPct} resetsAt={rl.rl7dResetsAt} now={now} />
+    </div>
+  );
+}
+
+function RLBar({ label, pct, resetsAt, now }: { label: string; pct: number; resetsAt: number; now: number } & Partial<RateLimits>) {
+  const s = sev(pct);
+  const resetLabel = resetsAt ? `· resets in ${until(resetsAt, now)}` : '';
+  return (
+    <div className={`rl-bar ${s}`} title={`${label}: ${pct.toFixed(1)}% used ${resetLabel}`}>
+      <span className="rl-lbl">{label}</span>
+      <div className="rl-track"><i style={{ width: `${Math.min(100, pct)}%` }} /></div>
+      <span className="rl-pct">{pct.toFixed(0)}%</span>
+    </div>
   );
 }
 

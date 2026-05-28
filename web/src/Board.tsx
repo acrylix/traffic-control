@@ -1,6 +1,6 @@
 import { useStore } from './store';
 import { GROUPS } from './App';
-import { STATUS_META, elapsed, ago, cost, ks } from './util';
+import { STATUS_META, elapsed, ago, ks } from './util';
 import type { Session } from './types';
 
 export function Board() {
@@ -42,6 +42,7 @@ export function Board() {
 
 function Strip({ s }: { s: Session }) {
   const { now, selectedId, select } = useStore();
+  const focusSession = useStore((st) => st.focusSession);
   const meta = STATUS_META[s.status];
   const done = s.claudeTodos.filter((t) => t.status === 'completed').length;
   const total = s.claudeTodos.length;
@@ -55,12 +56,16 @@ function Strip({ s }: { s: Session }) {
 
       <div className="body">
         <div className="row1">
+          <span className="callsign" title={`session id · ${s.id}`}>{s.callsign}</span>
           <span className="call">{s.project}</span>
           {s.branch && <span className="branch">⎇ {s.branch}</span>}
           <span className={`chip cli-${s.cli}`}>{s.cli}</span>
           {s.model && <span className="chip">{s.model}</span>}
           {s.permissionMode && s.permissionMode !== 'default' &&
             <span className={`chip perm-${s.permissionMode}`}>{s.permissionMode}</span>}
+          {s.effortLevel && s.effortLevel !== 'medium' &&
+            <span className={`chip effort effort-${s.effortLevel}`} title={`effort: ${s.effortLevel}`}>{s.effortLevel}</span>}
+          {s.thinkingEnabled && <span className="chip thinking" title="extended thinking enabled">💭</span>}
         </div>
         <div className="task">
           {s.status === 'working' ? <>⚙ {s.task}<span className="cursor" /></>
@@ -74,7 +79,7 @@ function Strip({ s }: { s: Session }) {
       <div className="gauge">
         <div className="g-lbl"><span>CTX</span><b>{s.metrics.ctxPct}%</b></div>
         <div className={`bar ctx ${ctxHi ? 'hi' : ''}`}><i style={{ width: `${s.metrics.ctxPct}%` }} /></div>
-        <div className="toks">{ks(s.metrics.tokensIn + s.metrics.tokensOut)} tok · {cost(s.metrics.costUsd)}</div>
+        <div className="toks">{ks(s.metrics.tokensIn + s.metrics.tokensOut)} tok</div>
       </div>
 
       <div className="meta">
@@ -82,6 +87,14 @@ function Strip({ s }: { s: Session }) {
         <div className="seen">{s.status === 'working' ? 'active now' : ago(s.lastSeenAt, now)}</div>
         <span className="todo-pill">◴ <b>{done}</b>/{total}</span>
       </div>
+
+      {s.terminal && (
+        <button
+          className="focus-btn"
+          title={`Jump to ${s.terminal.app} · ${s.terminal.title || 'window'}`}
+          onClick={(e) => { e.stopPropagation(); focusSession(s.id); }}
+        >↗</button>
+      )}
     </div>
   );
 }

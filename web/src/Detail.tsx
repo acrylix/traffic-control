@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from './store';
-import { STATUS_META, elapsed, cost } from './util';
+import { STATUS_META, elapsed, ks, lines } from './util';
 
 export function Detail() {
   const { sessions, selectedId, now } = useStore();
@@ -8,6 +8,7 @@ export function Detail() {
   const toggleTodo = useStore((s) => s.toggleTodo);
   const setNotes = useStore((s) => s.setNotes);
   const dismissSession = useStore((s) => s.dismissSession);
+  const focusSession = useStore((s) => s.focusSession);
 
   const s = sessions.find((x) => x.id === selectedId);
   const [draft, setDraft] = useState('');
@@ -59,17 +60,68 @@ export function Detail() {
           <span className={`led-lg ${meta.cls}`} />
           <span className="st" style={{ color: `var(--${meta.cls})` }}>{statusLabel}</span>
         </div>
-        <h2>{s.project}</h2>
+        <h2>
+          <span className="callsign callsign-lg" title={`session id · ${s.id}`}>{s.callsign}</span>
+          {s.project}
+        </h2>
         <div className="path">
-          {s.cwd}{s.branch ? ` · ${s.branch}` : ''} · {s.cli}
+          {s.cwd}{s.branch ? ` · ${s.branch}` : ''} · {s.cli} · <span style={{ color: 'var(--ink-dim)' }}>#{s.shortId}</span>
+          {s.messageCount > 0 && <> · <span style={{ color: 'var(--ink-dim)' }}>{s.messageCount} msgs</span></>}
+        </div>
+        {s.terminal && (
+          <button
+            className="focus-pill"
+            title={`Jump to this window in ${s.terminal.app}`}
+            onClick={() => focusSession(s.id)}
+          >
+            ↗ jump to {s.terminal.app}{s.terminal.title ? ` · ${s.terminal.title}` : ''}
+          </button>
+        )}
+        {(s.effortLevel || s.thinkingEnabled) && (
+          <div className="d-badges">
+            {s.effortLevel && <span className={`chip effort effort-${s.effortLevel}`}>effort: {s.effortLevel}</span>}
+            {s.thinkingEnabled && <span className="chip thinking">💭 thinking</span>}
+          </div>
+        )}
+      </div>
+
+      <div className="d-stats two-by-two">
+        <div className="d-stat"><div className="k">Model</div><div className="v" style={{ fontSize: 13 }}>{s.model || '—'}</div></div>
+        <div className="d-stat"><div className="k">Elapsed</div><div className="v">{elapsed(s.startedAt, s.status === 'working' ? now : s.lastSeenAt)}</div></div>
+        <div className="d-stat">
+          <div className="k">Tokens</div>
+          <div className="v">{ks(s.metrics.tokensIn)}<small> in</small></div>
+          <div className="v" style={{ fontSize: 12, color: 'var(--ink-dim)' }}>{ks(s.metrics.tokensOut)}<small> out</small></div>
+        </div>
+        <div className="d-stat">
+          <div className="k">Lines</div>
+          <div className="v" style={{ fontSize: 14 }}>{lines(s.metrics.linesAdded, s.metrics.linesRemoved)}</div>
         </div>
       </div>
 
-      <div className="d-stats">
-        <div className="d-stat"><div className="k">Model</div><div className="v" style={{ fontSize: 13 }}>{s.model || '—'}</div></div>
-        <div className="d-stat"><div className="k">Elapsed</div><div className="v">{elapsed(s.startedAt, s.status === 'working' ? now : s.lastSeenAt)}</div></div>
-        <div className="d-stat"><div className="k">Spend</div><div className="v">{cost(s.metrics.costUsd)}</div></div>
-      </div>
+      {(s.firstPrompt || s.lastAssistantText) && (
+        <div className="d-sec backfill">
+          <h4>
+            Transcript history
+            <span className="src">
+              {s.backfilled ? 'from JSONL' : 'live'}
+              {s.messageCount > 0 ? ` · ${s.messageCount} msgs` : ''}
+            </span>
+          </h4>
+          {s.firstPrompt && (
+            <div className="b-entry">
+              <div className="b-k">first asked</div>
+              <pre className="b-v user-text">{s.firstPrompt}</pre>
+            </div>
+          )}
+          {s.lastAssistantText && (
+            <div className="b-entry">
+              <div className="b-k">last said</div>
+              <pre className="b-v assistant-text">{s.lastAssistantText}</pre>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="d-sec">
         <h4>Current task <span className="src">{s.claudeTodos.length ? 'claude · todo' : 'derived'}</span></h4>

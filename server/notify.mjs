@@ -77,7 +77,8 @@ export function notifyTransition(prev, next, session) {
 
   if (!EVENTS.has(next)) return;
   const icon = ICONS[next] || '●';
-  const title = `${icon} ${next.toUpperCase()} · ${session.project}`;
+  const tag = session.callsign ? `${session.callsign} · ${session.project}` : session.project;
+  const title = `${icon} ${next.toUpperCase()} · ${tag}`;
   const subtitle = session.branch ? `${session.branch} · ${session.cli}` : session.cli;
   const message = session.task || session.reason || '—';
   const url = `http://localhost:${PORT}/?s=${encodeURIComponent(session.id)}`;

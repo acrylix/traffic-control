@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Session, Snapshot, Status } from './types';
+import type { RateLimits, Session, Snapshot, Status } from './types';
 
 // In dev (Vite on :5173) talk to the collector on :4317; in production the
 // collector serves this bundle same-origin, so relative URLs just work.
@@ -10,6 +10,7 @@ const API =
 interface GCState {
   sessions: Session[];
   tally: Record<Status, number>;
+  rateLimits: RateLimits | null;
   connected: boolean;
   selectedId: string | null;
   now: number;
@@ -20,6 +21,7 @@ interface GCState {
   removeTodo: (cwd: string | null, id: string) => void;
   setNotes: (cwd: string | null, text: string) => void;
   dismissSession: (id: string) => void;
+  focusSession: (id: string) => void;
 }
 
 const emptyTally: Record<Status, number> = {
@@ -37,6 +39,7 @@ function post(path: string, body: unknown) {
 export const useStore = create<GCState>((set) => ({
   sessions: [],
   tally: emptyTally,
+  rateLimits: null,
   connected: false,
   selectedId: null,
   now: Date.now(),
@@ -62,7 +65,7 @@ export const useStore = create<GCState>((set) => ({
               const needy = snap.sessions.find((x) => x.status === 'waiting' || x.status === 'blocked');
               selectedId = (needy ?? snap.sessions[0])?.id ?? null;
             }
-            return { sessions: snap.sessions, tally: snap.tally, now: snap.now, selectedId };
+            return { sessions: snap.sessions, tally: snap.tally, rateLimits: snap.rateLimits, now: snap.now, selectedId };
           });
         } catch { /* ignore malformed frame */ }
       };
@@ -82,4 +85,5 @@ export const useStore = create<GCState>((set) => ({
   removeTodo: (cwd, id) => post('/api/todo/remove', { cwd, id }),
   setNotes: (cwd, text) => post('/api/note', { cwd, text }),
   dismissSession: (id) => post('/api/session/remove', { id }),
+  focusSession: (id) => post('/api/session/focus', { id }),
 }));

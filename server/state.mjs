@@ -5,6 +5,34 @@ import { basename } from 'node:path';
 
 const TASK_MAX = 96;
 
+// ATC-style callsign derived from session_id. Stable, memorable, on-theme.
+// 26 phonetic words × 99 numbers = 2574 distinct callsigns — plenty for any
+// realistic fleet. Collisions are possible but rare for one user's machine.
+const NATO = [
+  'ALPHA', 'BRAVO', 'CHARLIE', 'DELTA', 'ECHO', 'FOXTROT', 'GOLF', 'HOTEL',
+  'INDIA', 'JULIET', 'KILO', 'LIMA', 'MIKE', 'NOVEMBER', 'OSCAR', 'PAPA',
+  'QUEBEC', 'ROMEO', 'SIERRA', 'TANGO', 'UNIFORM', 'VICTOR', 'WHISKEY', 'XRAY',
+  'YANKEE', 'ZULU',
+];
+
+export function callsign(id) {
+  if (!id) return 'UNKNOWN';
+  let h = 2166136261; // FNV-1a-ish
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  const word = NATO[h % NATO.length];
+  const num = (Math.floor(h / NATO.length) % 99) + 1;
+  return `${word}-${num}`;
+}
+
+/** Short stable suffix of a session id for traceability when callsigns collide. */
+export function shortId(id) {
+  if (!id) return '——————';
+  return id.replace(/-/g, '').slice(-6).toLowerCase();
+}
+
 /**
  * Hook payloads vary in casing (snake_case from hooks, camelCase from
  * transcripts/statusline) and shape across Claude Code versions. Normalize
@@ -16,6 +44,11 @@ export function normalize(raw = {}) {
   const cost = p.cost || {};
   const model = p.model || {};
   const ws = p.workspace || {};
+  const rl = p.rate_limits || p.rateLimits || {};
+  const rl5 = rl.five_hour || rl.fiveHour || {};
+  const rl7 = rl.seven_day || rl.sevenDay || {};
+  const eff = p.effort || {};
+  const th = p.thinking || {};
   return {
     sessionId: p.session_id || p.sessionId || null,
     cwd: p.cwd || ws.current_dir || ws.project_dir || null,
@@ -36,8 +69,15 @@ export function normalize(raw = {}) {
     ctxSize: num(ctx.context_window_size),
     costUsd: num(cost.total_cost_usd),
     durationMs: num(cost.total_duration_ms),
+    apiDurationMs: num(cost.total_api_duration_ms),
     linesAdded: num(cost.total_lines_added),
     linesRemoved: num(cost.total_lines_removed),
+    rl5hPct: num(rl5.used_percentage),
+    rl5hResetsAt: num(rl5.resets_at),
+    rl7dPct: num(rl7.used_percentage),
+    rl7dResetsAt: num(rl7.resets_at),
+    effortLevel: eff.level || null,
+    thinkingEnabled: typeof th.enabled === 'boolean' ? th.enabled : null,
   };
 }
 
@@ -54,6 +94,8 @@ export function freshSession(id) {
   const now = Date.now();
   return {
     id,
+    callsign: callsign(id),
+    shortId: shortId(id),
     cwd: null,
     project: id ? id.slice(0, 8) : 'unknown',
     branch: null,
@@ -64,8 +106,21 @@ export function freshSession(id) {
     reason: 'registered',
     task: 'waiting for session…',
     permission: null,
-    claudeTodos: [],          // mirrored from TodoWrite
-    metrics: { ctxPct: 0, costUsd: 0, tokensIn: 0, tokensOut: 0, durationMs: 0 },
+    claudeTodos: [],          // mirrored from TodoWrite (live + backfilled)
+    firstPrompt: null,        // the "what was this session asked to do"
+    lastAssistantText: null,  // most recent assistant text block (from transcript)
+    messageCount: 0,          // total messages observed (backfill + live)
+    backfilled: false,        // transcript scan attempted at least once
+    metrics: {
+      ctxPct: 0, costUsd: 0, tokensIn: 0, tokensOut: 0,
+      durationMs: 0, apiDurationMs: 0,
+      linesAdded: 0, linesRemoved: 0,
+      rl5hPct: 0, rl5hResetsAt: 0,
+      rl7dPct: 0, rl7dResetsAt: 0,
+    },
+    effortLevel: null,
+    thinkingEnabled: null,
+    terminal: null,           // { app, windowId, title, space, stampedAt } once bound via yabai
     startedAt: now,
     lastSeenAt: now,
     lastStopAt: null,
@@ -103,6 +158,8 @@ export function applyEvent(s, kind, n, cli = 'claude') {
       break;
 
     case 'prompt':
+      if (!s.firstPrompt && n.prompt) s.firstPrompt = n.prompt;
+      s.messageCount += 1;
       setStatus(s, 'working', 'prompt');
       pushEvent(s, 'prompt', truncate(n.prompt || 'user prompt', 60));
       break;
@@ -174,6 +231,15 @@ function absorbMetrics(s, n) {
   if (n.tokensIn !== undefined) m.tokensIn = n.tokensIn;
   if (n.tokensOut !== undefined) m.tokensOut = n.tokensOut;
   if (n.durationMs !== undefined) m.durationMs = n.durationMs;
+  if (n.apiDurationMs !== undefined) m.apiDurationMs = n.apiDurationMs;
+  if (n.linesAdded !== undefined) m.linesAdded = n.linesAdded;
+  if (n.linesRemoved !== undefined) m.linesRemoved = n.linesRemoved;
+  if (n.rl5hPct !== undefined) m.rl5hPct = n.rl5hPct;
+  if (n.rl5hResetsAt !== undefined) m.rl5hResetsAt = n.rl5hResetsAt;
+  if (n.rl7dPct !== undefined) m.rl7dPct = n.rl7dPct;
+  if (n.rl7dResetsAt !== undefined) m.rl7dResetsAt = n.rl7dResetsAt;
+  if (n.effortLevel) s.effortLevel = n.effortLevel;
+  if (n.thinkingEnabled !== null && n.thinkingEnabled !== undefined) s.thinkingEnabled = n.thinkingEnabled;
 }
 
 function captureTodos(s, n) {
@@ -209,8 +275,36 @@ function computeTask(s, n) {
   if (n.prompt) return truncate(n.prompt, TASK_MAX);
   const lastPrompt = s.events.find((e) => e.kind === 'prompt');
   if (lastPrompt) return truncate(lastPrompt.label, TASK_MAX);
+  // backfill fallback — gives idle/resumed sessions a real label
+  if (s.firstPrompt) return truncate(s.firstPrompt, TASK_MAX);
   if (s.status === 'idle') return 'ready — awaiting input';
   return s.task;
+}
+
+/**
+ * Merge transcript backfill into a session. Doesn't overwrite live data;
+ * fills only what we don't already know.
+ */
+export function mergeBackfill(s, data) {
+  if (!data) return false;
+  let changed = false;
+  if (!s.firstPrompt && data.firstPrompt) {
+    s.firstPrompt = data.firstPrompt; changed = true;
+  }
+  if (data.lastAssistantText && data.lastAssistantText !== s.lastAssistantText) {
+    s.lastAssistantText = data.lastAssistantText; changed = true;
+  }
+  if (data.firstPromptAt && data.firstPromptAt < s.startedAt) {
+    s.startedAt = data.firstPromptAt; changed = true;
+  }
+  if (s.claudeTodos.length === 0 && Array.isArray(data.claudeTodos) && data.claudeTodos.length) {
+    s.claudeTodos = data.claudeTodos; changed = true;
+  }
+  if (data.messageCount && s.messageCount < data.messageCount) {
+    s.messageCount = data.messageCount; changed = true;
+  }
+  if (changed) s.task = computeTask(s, {});
+  return changed;
 }
 
 function truncate(str, n) {

@@ -12,6 +12,8 @@ import { fileURLToPath } from 'node:url';
 import { normalize, freshSession, applyEvent, sweepStale } from './state.mjs';
 import { loadStore, getProject, addTodo, toggleTodo, removeTodo, setNotes, DATA_DIR } from './store.mjs';
 import { notifyTransition, notifyStatus } from './notify.mjs';
+import { startTail, stopTail, stopAllTails, applyTranscriptLine, tailingCount } from './transcript.mjs';
+import { getFocusedTerminal, focusWindow } from './terminal.mjs';
 
 const PORT = Number(process.env.GC_PORT || 4317);
 const TOKEN = process.env.GC_INGEST_TOKEN || '';      // sink seam: empty = open (localhost)
@@ -40,7 +42,19 @@ function snapshot() {
   list.sort((a, b) => b.lastSeenAt - a.lastSeenAt);
   const tally = { working: 0, waiting: 0, blocked: 0, done: 0, idle: 0 };
   for (const s of list) tally[s.status] = (tally[s.status] || 0) + 1;
-  return { sessions: list, tally, now: Date.now() };
+  // Rate limits are account-scoped — pick the most recently beat-reported.
+  let rlSrc = null;
+  for (const s of list) {
+    if (!s.metrics.rl5hResetsAt && !s.metrics.rl7dResetsAt) continue;
+    if (!rlSrc || s.lastSeenAt > rlSrc.lastSeenAt) rlSrc = s;
+  }
+  const rateLimits = rlSrc ? {
+    rl5hPct: rlSrc.metrics.rl5hPct,
+    rl5hResetsAt: rlSrc.metrics.rl5hResetsAt,
+    rl7dPct: rlSrc.metrics.rl7dPct,
+    rl7dResetsAt: rlSrc.metrics.rl7dResetsAt,
+  } : null;
+  return { sessions: list, tally, rateLimits, now: Date.now() };
 }
 
 function broadcast() {
@@ -103,6 +117,35 @@ const server = createServer(async (req, res) => {
     const cli = searchParams.get('cli') || 'claude';
     applyEvent(s, kind, n, cli);
     if (prev !== null && prev !== s.status) notifyTransition(prev, s.status, s);
+    // Bind to the focused OS window on session-start and on every user
+    // prompt. These are the moments focus is most reliably in the terminal.
+    // Other hooks (post-tool, notify) can fire while the user is elsewhere.
+    if (kind === 'session-start' || kind === 'prompt') {
+      getFocusedTerminal()
+        .then((term) => {
+          if (!term) return;
+          const cur = sessions.get(id);
+          if (!cur) return;
+          cur.terminal = term;
+          broadcast();
+        })
+        .catch(() => {});
+    }
+    // Start tailing the transcript on first sighting. The initial tick reads
+    // everything up to current EOF (catches up history); subsequent ticks
+    // poll for new bytes. Hooks → live state changes; transcript tail → live
+    // tokens, ctx%, todos, last-said. Two independent feeds for the same
+    // session, both broadcasting on change.
+    if (!s.backfilled && n.transcriptPath) {
+      s.backfilled = true;
+      startTail(n.transcriptPath, id, (objs) => {
+        const cur = sessions.get(id);
+        if (!cur) return;
+        let changed = false;
+        for (const obj of objs) if (applyTranscriptLine(cur, obj)) changed = true;
+        if (changed) broadcast();
+      });
+    }
     broadcast();
     return json(res, 200, { ok: true });   // fast ack; hook never blocks Claude
   }
@@ -149,10 +192,19 @@ const server = createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
+  // jump to the terminal window the session is running in (requires yabai)
+  if (pathname === '/api/session/focus' && req.method === 'POST') {
+    const b = await readBody(req);
+    const s = sessions.get(b.id);
+    if (!s || !s.terminal) return json(res, 404, { error: 'no terminal binding' });
+    const ok = await focusWindow(s.terminal.windowId);
+    return json(res, ok ? 200 : 500, { ok });
+  }
+
   // remove a session from the board (will reappear if it fires a new hook event)
   if (pathname === '/api/session/remove' && req.method === 'POST') {
     const b = await readBody(req);
-    if (b.id) sessions.delete(b.id);
+    if (b.id) { sessions.delete(b.id); stopTail(b.id); }
     broadcast();
     return json(res, 200, { ok: true });
   }
@@ -210,4 +262,10 @@ server.listen(PORT, () => {
   console.log(`  auth     : ${TOKEN ? 'token required' : 'open (localhost)'}`);
   console.log(`  stale    : ${Math.round(STALE_MS / 1000)}s`);
   console.log(`  notify   : ${n.enabled ? `${n.backend} · ${n.events.join(',')} · sound=${n.sound} · sticky=${n.sticky ? 'on' : 'off'}` : 'disabled'}`);
+  console.log(`  tailing  : ${tailingCount()} session(s) · poll=${process.env.GC_TAIL_MS || 2000}ms`);
 });
+
+// Clean up file watchers on shutdown.
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => { stopAllTails(); process.exit(0); });
+}

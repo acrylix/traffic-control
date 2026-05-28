@@ -37,3 +37,28 @@ export function ks(n: number): string {
   if (!n) return '0';
   return n >= 1000 ? `${Math.round(n / 1000)}k` : String(n);
 }
+
+/** Severity bucket from a 0-100 percentage. */
+export function sev(pct: number): '' | 'mid' | 'hi' | 'crit' {
+  if (pct >= 90) return 'crit';
+  if (pct >= 70) return 'hi';
+  if (pct >= 40) return 'mid';
+  return '';
+}
+
+/** "in 2h 14m" / "in 3d" / "now" — from a unix seconds reset timestamp. */
+export function until(unixSeconds: number, now: number): string {
+  if (!unixSeconds) return '';
+  const s = unixSeconds * 1000 - now;
+  if (s <= 0) return 'now';
+  const m = Math.floor(s / 60000);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 48) return `${h}h ${String(m % 60).padStart(2, '0')}m`;
+  return `${Math.floor(h / 24)}d`;
+}
+
+/** "+210 / -18" lines diff. */
+export function lines(added: number, removed: number): string {
+  return `+${added || 0} / −${removed || 0}`;
+}
