@@ -5,11 +5,11 @@
 
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { join, extname, normalize as normPath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { normalize, freshSession, applyEvent, sweepStale } from './state.mjs';
+import { normalize, freshSession, applyEvent, sweepStale, endTurn } from './state.mjs';
 import { loadStore, getProject, addTodo, toggleTodo, removeTodo, setNotes, DATA_DIR } from './store.mjs';
 import { notifyTransition, notifyStatus } from './notify.mjs';
 import { startTail, stopTail, stopAllTails, applyTranscriptLine, tailingCount } from './transcript.mjs';
@@ -18,6 +18,13 @@ import { getFocusedTerminal, focusWindow } from './terminal.mjs';
 const PORT = Number(process.env.GC_PORT || 4242);
 const TOKEN = process.env.GC_INGEST_TOKEN || '';      // sink seam: empty = open (localhost)
 const STALE_MS = Number(process.env.GC_STALE_MS || 6 * 60 * 1000);
+// How long a session can be "working" with no activity from either the hook
+// stream OR the transcript file before we assume the turn quietly ended
+// (most commonly an ESC interrupt — Claude truncates mid-stream and the
+// usual Stop/PostToolUse hooks never fire). 60s is generous enough to
+// avoid false-positiving long bash commands; raise via GC_INTERRUPT_MS
+// if you routinely run multi-minute tools with no intermediate output.
+const INTERRUPT_MS = Number(process.env.GC_INTERRUPT_MS || 60_000);
 const PUBLIC_DIR = join(fileURLToPath(new URL('.', import.meta.url)), 'public');
 
 const HOOK_KINDS = new Set([
@@ -141,6 +148,7 @@ const server = createServer(async (req, res) => {
     // session, both broadcasting on change.
     if (!s.backfilled && n.transcriptPath) {
       s.backfilled = true;
+      s.transcriptPath = n.transcriptPath; // so the stuck-working sweep can stat it
       startTail(n.transcriptPath, id, (objs) => {
         const cur = sessions.get(id);
         if (!cur) return;
@@ -251,10 +259,28 @@ function mime(ext) {
   }[ext] || 'application/octet-stream';
 }
 
-// stale sweep
+// stale sweep — runs every 15s, handles two cases:
+//   1) no activity at all for STALE_MS → flip to 'idle' (existing behavior)
+//   2) stuck in 'working' but both transcript file and hook stream have been
+//      silent for INTERRUPT_MS → assume the turn quietly ended (ESC, crash,
+//      anything else that skips the normal Stop hook). Recovers from the
+//      bug where ESC during generation leaves the strip stuck on green.
 setInterval(() => {
   let changed = false;
-  for (const s of sessions.values()) if (sweepStale(s, STALE_MS)) changed = true;
+  const now = Date.now();
+  for (const s of sessions.values()) {
+    if (sweepStale(s, STALE_MS)) { changed = true; continue; }
+
+    if (s.status === 'working' && s.transcriptPath) {
+      const hookSilent = now - s.lastSeenAt;
+      let transcriptSilent = Infinity;
+      try { transcriptSilent = now - statSync(s.transcriptPath).mtimeMs; } catch {}
+      if (hookSilent > INTERRUPT_MS && transcriptSilent > INTERRUPT_MS) {
+        endTurn(s, 'interrupted');
+        changed = true;
+      }
+    }
+  }
   if (changed) broadcast();
 }, 15000);
 

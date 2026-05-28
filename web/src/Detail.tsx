@@ -2,8 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useStore } from './store';
 import { STATUS_META, elapsed, ks, lines } from './util';
 
+const WIDTH_KEY = 'gc.drawer.width';
+const DEFAULT_W = 480;
+const MIN_W = 360;
+const maxW = () => Math.round(window.innerWidth * 0.85);
+
 export function Detail() {
   const { sessions, selectedId, now } = useStore();
+  const select = useStore((st) => st.select);
   const addTodo = useStore((s) => s.addTodo);
   const toggleTodo = useStore((s) => s.toggleTodo);
   const setNotes = useStore((s) => s.setNotes);
@@ -11,6 +17,8 @@ export function Detail() {
   const focusSession = useStore((s) => s.focusSession);
 
   const s = sessions.find((x) => x.id === selectedId);
+  const open = !!s;
+
   const [draft, setDraft] = useState('');
   const [noteText, setNoteText] = useState('');
   const noteCwd = useRef<string | null>(null);
@@ -23,12 +31,54 @@ export function Detail() {
     }
   }, [s?.cwd, s?.notes, s]);
 
+  // ---- resizable width ----
+  const [width, setWidth] = useState<number>(() => {
+    const stored = Number(localStorage.getItem(WIDTH_KEY));
+    return Number.isFinite(stored) && stored >= MIN_W ? stored : DEFAULT_W;
+  });
+  const [resizing, setResizing] = useState(false);
+  const dragRef = useRef<{ startX: number; startW: number } | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem(WIDTH_KEY, String(width));
+  }, [width]);
+
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const dx = d.startX - e.clientX;            // drag left → grow
+      setWidth(Math.max(MIN_W, Math.min(maxW(), d.startW + dx)));
+    };
+    const onUp = () => setResizing(false);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [resizing]);
+
+  // esc closes
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') select(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, select]);
+
+  const startResize = (e: React.PointerEvent) => {
+    e.preventDefault();
+    dragRef.current = { startX: e.clientX, startW: width };
+    setResizing(true);
+  };
+  const resetWidth = () => setWidth(DEFAULT_W);
+
   if (!s) {
-    return (
-      <section className="detail">
-        <div className="placeholder">Select a session to see its task, todos, and activity.</div>
-      </section>
-    );
+    // Render nothing visible when nothing is selected — the drawer fully
+    // retracts off-screen via the CSS transform.
+    return <aside className="drawer" aria-hidden="true" style={{ width }} />;
   }
 
   const meta = STATUS_META[s.status];
@@ -49,13 +99,30 @@ export function Detail() {
   };
 
   return (
-    <section className="detail">
+    <aside
+      className={`drawer open ${resizing ? 'resizing' : ''}`}
+      style={{ width }}
+      role="dialog"
+      aria-label={`Session detail · ${s.project}`}
+    >
+      <div
+        className="resize-handle"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize drawer"
+        title="Drag to resize · double-click to reset"
+        onPointerDown={startResize}
+        onDoubleClick={resetWidth}
+      />
+      {resizing && <div className="resize-readout">{width} px</div>}
+
+      <button
+        className="dismiss"
+        title="Close (esc)"
+        onClick={() => select(null)}
+      >×</button>
+
       <div className="d-head">
-        <button
-          className="dismiss"
-          title="Dismiss from board (reappears if it fires another event)"
-          onClick={() => { if (confirm(`Dismiss "${s.project}" from the board?`)) dismissSession(s.id); }}
-        >×</button>
         <div className="badge">
           <span className={`led-lg ${meta.cls}`} />
           <span className="st" style={{ color: `var(--${meta.cls})` }}>{statusLabel}</span>
@@ -83,6 +150,11 @@ export function Detail() {
             {s.thinkingEnabled && <span className="chip thinking">💭 thinking</span>}
           </div>
         )}
+        <button
+          className="dismiss-soft"
+          title="Dismiss from board (reappears if it fires another event)"
+          onClick={() => { if (confirm(`Dismiss "${s.project}" from the board?`)) dismissSession(s.id); }}
+        >dismiss from board</button>
       </div>
 
       <div className="d-stats two-by-two">
@@ -197,6 +269,6 @@ export function Detail() {
           ))}
         </div>
       </div>
-    </section>
+    </aside>
   );
 }

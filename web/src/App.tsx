@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from './store';
 import { Board } from './Board';
 import { Detail } from './Detail';
-import { ago, sev, until } from './util';
+import { sev, until } from './util';
 import type { RateLimits, Status } from './types';
 
 export function App() {
@@ -12,7 +12,6 @@ export function App() {
   return (
     <div className="tower">
       <Header />
-      <Rail />
       <Board />
       <Detail />
     </div>
@@ -87,77 +86,6 @@ function RLBar({ label, pct, resetsAt, now }: { label: string; pct: number; rese
       <span className="rl-lbl">{label}</span>
       <div className="rl-track"><i style={{ width: `${Math.min(100, pct)}%` }} /></div>
       <span className="rl-pct">{pct.toFixed(0)}%</span>
-    </div>
-  );
-}
-
-function Rail() {
-  const sessions = useStore((s) => s.sessions);
-  const tally = useStore((s) => s.tally);
-  const connected = useStore((s) => s.connected);
-  const now = useStore((s) => s.now);
-
-  const byCli = sessions.reduce<Record<string, number>>((m, s) => {
-    m[s.cli] = (m[s.cli] || 0) + 1; return m;
-  }, {});
-
-  const feed = sessions
-    .flatMap((s) => s.events.slice(0, 2).map((e) => ({ ...e, project: s.project })))
-    .sort((a, b) => b.t - a.t)
-    .slice(0, 6);
-
-  const dot = (color: string, glow?: boolean) =>
-    ({ background: `var(${color})`, boxShadow: glow ? `0 0 6px var(${color}-glow)` : 'none' });
-
-  return (
-    <aside className="rail">
-      <div className="rail-sec">
-        <h3>Status</h3>
-        <Filt label="All sessions" count={sessions.length} style={{ background: '#fff' }} />
-        <Filt label="Working" count={tally.working} style={dot('--go', true)} />
-        <Filt label="Waiting on you" count={tally.waiting} style={dot('--hold', true)} />
-        <Filt label="Done" count={tally.done} style={dot('--done')} />
-        <Filt label="Blocked" count={tally.blocked} style={dot('--stop', true)} />
-        <Filt label="Stale" count={tally.idle} style={dot('--idle')} />
-      </div>
-
-      <div className="rail-sec">
-        <h3>Agents</h3>
-        {Object.keys(byCli).length === 0 && <div className="filt"><span style={{ color: 'var(--ink-faint)' }}>none yet</span></div>}
-        {Object.entries(byCli).map(([cli, n]) => (
-          <div className="filt" key={cli}>
-            <span className={`chip cli-${cli}`} style={{ border: 'none', padding: 0, background: 'none' }}>{cli}</span>
-            <span className="cnt">{n}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="rail-sec">
-        <h3>Feed</h3>
-        <div className="feed">
-          {feed.length === 0 && <div className="e">— no activity —</div>}
-          {feed.map((e, i) => (
-            <div className="e" key={i}>
-              <span style={{ color: 'var(--ink-faint)' }}>{ago(e.t, now)}</span> · {e.project} · {e.label}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="rail-sec">
-        <h3>Collector</h3>
-        <div className={`conn ${connected ? 'on' : 'off'}`}>
-          <span className="led" />{connected ? 'connected' : 'offline'}
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-function Filt({ label, count, style }: { label: string; count: number; style: React.CSSProperties }) {
-  return (
-    <div className="filt">
-      <span className="dot" style={style} /> {label} <span className="cnt">{count}</span>
     </div>
   );
 }

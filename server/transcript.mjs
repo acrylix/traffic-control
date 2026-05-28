@@ -14,6 +14,7 @@
 // gives us tokens; cost would have to be estimated per-model and would drift).
 
 import { createReadStream, existsSync, statSync } from 'node:fs';
+import { endTurn } from './state.mjs';
 
 const TICK_MS = Number(process.env.GC_TAIL_MS || 2000);
 
@@ -108,6 +109,20 @@ export function tailingCount() { return tails.size; }
 export function applyTranscriptLine(s, obj) {
   if (!obj || !obj.type) return false;
   let changed = false;
+
+  // System messages: detect turn boundaries.
+  //   subtype:"turn_duration"     — fires at end of every assistant turn
+  //   subtype:"stop_hook_summary" — fires when Stop hooks finish running
+  // Either is a definitive "turn is over" signal. If we missed the explicit
+  // Stop hook (e.g. it got rate-limited, the collector restarted mid-turn,
+  // or hooks weren't installed yet), the transcript still tells us here.
+  if (obj.type === 'system' && (obj.subtype === 'turn_duration' || obj.subtype === 'stop_hook_summary')) {
+    if (s.status === 'working') {
+      endTurn(s, 'turn-end');
+      changed = true;
+    }
+    return changed;
+  }
 
   if (obj.type === 'user' && !obj.isMeta) {
     const text = extractUserText(obj.message);

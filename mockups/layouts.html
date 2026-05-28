@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ground Control — layout candidates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;0,800&family=Saira+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg:        #08090b;
+  --bg-grid:   #0d0f12;
+  --panel:     #0f1216;
+  --panel-2:   #14181d;
+  --hair:      #1c2128;
+  --hair-lit:  #283039;
+  --ink:       #c9d1d9;
+  --ink-dim:   #6e7681;
+  --ink-faint: #424a53;
+
+  --go:    #34e29a;
+  --hold:  #ffb627;
+  --stop:  #ff5d5d;
+  --done:  #4fc3e8;
+  --idle:  #5a636e;
+
+  --go-glow:   rgba(52,226,154,.55);
+  --hold-glow: rgba(255,182,39,.6);
+  --stop-glow: rgba(255,93,93,.55);
+  --done-glow: rgba(79,195,232,.45);
+
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-cond: 'Saira Condensed', 'JetBrains Mono', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-mono); font-size: 13px; line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(900px 500px at 88% -10%, rgba(79,195,232,.06), transparent 60%),
+    radial-gradient(700px 400px at 0% 110%, rgba(52,226,154,.05), transparent 60%),
+    linear-gradient(var(--bg-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 38px 38px, 38px 38px;
+}
+
+/* ──── switcher ──── */
+.switcher {
+  position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+  z-index: 10000; display: flex; gap: 6px;
+  background: rgba(15,18,22,.92); border: 1px solid var(--hair-lit);
+  border-radius: 6px; padding: 5px; backdrop-filter: blur(8px);
+  box-shadow: 0 10px 30px rgba(0,0,0,.5);
+}
+.switcher button {
+  appearance: none; background: transparent; border: 1px solid transparent;
+  color: var(--ink-dim); cursor: pointer; padding: 7px 14px;
+  font-family: var(--font-cond); font-weight: 700; font-size: 11px;
+  letter-spacing: 2px; text-transform: uppercase; border-radius: 4px;
+  transition: all .12s;
+}
+.switcher button:hover { color: var(--ink); }
+.switcher button.active {
+  background: rgba(52,226,154,.10); color: var(--go);
+  border-color: rgba(52,226,154,.35); text-shadow: 0 0 8px var(--go-glow);
+}
+.switcher .sub {
+  font-family: var(--font-mono); font-size: 9.5px; color: var(--ink-faint);
+  letter-spacing: .8px; padding-left: 8px; padding-right: 4px;
+  display: flex; align-items: center;
+}
+
+.layout-stage { height: 100vh; overflow: hidden; padding-top: 0; }
+.layout-stage > .frame { height: 100%; display: none; }
+.layout-stage > .frame.active { display: grid; }
+
+/* ──── shared atoms (cards, strips, gate, header) ──── */
+.hd {
+  display: flex; align-items: center; gap: 18px; padding: 0 18px;
+  height: 56px; border-bottom: 1px solid var(--hair);
+  background: linear-gradient(180deg, #0c0e11, #090a0c);
+  position: relative;
+}
+.hd::after {
+  content:""; position:absolute; left:0; right:0; bottom:-1px; height:1px;
+  background: linear-gradient(90deg, transparent, var(--go-glow), transparent); opacity:.4;
+}
+.brand { display: flex; align-items: center; gap: 11px; }
+.radar {
+  width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--hair-lit);
+  position: relative; overflow: hidden;
+  background: radial-gradient(circle, rgba(52,226,154,.08), transparent 70%);
+}
+.radar::before {
+  content:""; position: absolute; inset: 0;
+  background: conic-gradient(from 0deg, transparent 0 300deg, var(--go-glow) 360deg);
+  animation: sweep 3.4s linear infinite;
+}
+.radar::after {
+  content:""; position: absolute; inset: 38%; border-radius: 50%;
+  background: var(--go); box-shadow: 0 0 6px var(--go-glow);
+}
+@keyframes sweep { to { transform: rotate(360deg); } }
+.brand h1 {
+  font-family: var(--font-cond); font-weight: 800; font-size: 18px;
+  letter-spacing: 3.5px; text-transform: uppercase; line-height: 1;
+}
+.brand .sub {
+  font-size: 9.5px; letter-spacing: 2px; color: var(--ink-faint);
+  text-transform: uppercase; margin-top: 2px;
+}
+.clock {
+  font-variant-numeric: tabular-nums; font-size: 12px; letter-spacing: 1px;
+  color: var(--ink-dim); border-left: 1px solid var(--hair); border-right: 1px solid var(--hair);
+  padding: 0 18px; height: 34px;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.clock b { color: var(--ink); font-weight: 700; }
+.clock span { font-size: 9px; letter-spacing: 2px; color: var(--ink-faint); }
+.tally { display: flex; gap: 8px; }
+.tally .t {
+  display: flex; align-items: center; gap: 7px; padding: 5px 11px;
+  border: 1px solid var(--hair); background: var(--panel); border-radius: 3px;
+}
+.tally .dot { width: 8px; height: 8px; border-radius: 50%; }
+.tally .num { font-family: var(--font-cond); font-weight: 700; font-size: 18px; line-height: 1; font-variant-numeric: tabular-nums; }
+.tally .lbl { font-size: 9px; letter-spacing: 1.5px; color: var(--ink-faint); text-transform: uppercase; }
+.t.go .dot   { background: var(--go);   box-shadow: 0 0 7px var(--go-glow); }
+.t.hold .dot { background: var(--hold); box-shadow: 0 0 7px var(--hold-glow); }
+.t.stop .dot { background: var(--stop); box-shadow: 0 0 7px var(--stop-glow); }
+.cmd {
+  margin-left: auto; display: flex; align-items: center; gap: 10px;
+  background: var(--panel); border: 1px solid var(--hair); padding: 7px 12px;
+  border-radius: 4px; width: 280px; color: var(--ink-dim);
+}
+.cmd input { background: none; border: none; outline: none; color: var(--ink); font-family: var(--font-mono); font-size: 12px; width: 100%; }
+.cmd kbd { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); border: 1px solid var(--hair-lit); border-radius: 3px; padding: 1px 5px; }
+
+/* status led */
+.led-lg { width: 11px; height: 11px; border-radius: 50%; flex: none; display: inline-block; }
+.go   .led-lg { background: var(--go);   box-shadow: 0 0 10px var(--go-glow); }
+.hold .led-lg { background: var(--hold); box-shadow: 0 0 10px var(--hold-glow); animation: pulse 1.8s ease-in-out infinite; }
+.stop .led-lg { background: var(--stop); box-shadow: 0 0 10px var(--stop-glow); }
+.done .led-lg { background: var(--done); box-shadow: 0 0 10px var(--done-glow); }
+.idle .led-lg { background: var(--idle); }
+@keyframes pulse { 50% { opacity: .55; } }
+
+/* gate (jump button) — same as production */
+.gate {
+  appearance:none; border:none; border-left:1px solid var(--hair);
+  position:relative; overflow:hidden;
+  padding:9px 11px 10px;
+  display:flex; flex-direction:column; justify-content:space-between; align-items:stretch;
+  background:transparent; cursor:pointer; text-align:left;
+  font-family:var(--font-cond);
+  transition: background .15s, border-left-color .15s;
+}
+.gate-bound { background: linear-gradient(180deg, rgba(52,226,154,.05), rgba(52,226,154,.13)); }
+.gate-bound::before {
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background: radial-gradient(120% 75% at 110% 50%, rgba(52,226,154,.20), transparent 62%);
+  opacity:.55; transition: opacity .2s;
+}
+.gate-bound:hover { background: linear-gradient(180deg, rgba(52,226,154,.10), rgba(52,226,154,.22)); border-left-color: rgba(52,226,154,.55); }
+.gate-bound:hover::before { opacity:1; }
+.gate-bound:active { background: linear-gradient(180deg, rgba(52,226,154,.30), rgba(52,226,154,.42)); transform: scale(.97); }
+.gate-unbound {
+  cursor:default;
+  background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255,255,255,.018) 6px 8px);
+}
+.gate-tag { font-size: 8.5px; letter-spacing: 2.5px; font-weight: 700; color: var(--ink-faint); text-transform: uppercase; position: relative; z-index: 1; }
+.gate-bound .gate-tag { color: rgba(52,226,154,.65); }
+.gate-row { display: flex; align-items: baseline; gap: 6px; position: relative; z-index: 1; line-height: 1; }
+.gate-chev { display: inline-flex; align-items: baseline; font-weight: 800; font-size: 15px; line-height: 1; letter-spacing: -1px; color: var(--go); }
+.gate-unbound .gate-chev { color: var(--ink-faint); letter-spacing: 2px; }
+.gate-chev i { display: inline-block; font-style: normal; text-shadow: 0 0 6px var(--go-glow); }
+.gate-bound .gate-chev i { opacity: .2; animation: gate-march 1.5s ease-in-out infinite; }
+.gate-bound .gate-chev i:nth-child(2) { animation-delay: .18s; }
+.gate-bound .gate-chev i:nth-child(3) { animation-delay: .36s; }
+.gate-bound:hover .gate-chev i { animation-duration: .65s; }
+.gate-unbound .gate-chev i { opacity: .4; text-shadow: none; }
+@keyframes gate-march {
+  0%   { opacity: .15; transform: translateX(-3px); }
+  45%  { opacity: 1;   transform: translateX(2px); }
+  100% { opacity: .15; transform: translateX(-3px); }
+}
+.gate-dest {
+  font-weight: 800; font-size: 16px; line-height: 1;
+  letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--go); text-shadow: 0 0 9px var(--go-glow);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gate-unbound .gate-dest { font-size: 10.5px; font-weight: 700; color: var(--ink-faint); text-shadow: none; }
+.gate-runway {
+  height: 3px; border-radius: 1px;
+  background: repeating-linear-gradient(90deg, var(--go) 0 5px, transparent 5px 9px);
+  box-shadow: 0 0 8px var(--go-glow); opacity: .5; transition: opacity .15s;
+  position: relative; z-index: 1;
+}
+.gate-bound:hover .gate-runway { opacity: 1; }
+.gate-runway-off { background: repeating-linear-gradient(90deg, var(--ink-faint) 0 3px, transparent 3px 7px); box-shadow: none; opacity: .25; }
+
+/* small gate variant for cards */
+.gate.gate-sm { padding: 6px 9px 7px; }
+.gate.gate-sm .gate-tag { font-size: 7.5px; letter-spacing: 2px; }
+.gate.gate-sm .gate-dest { font-size: 13px; letter-spacing: 1.2px; }
+.gate.gate-sm .gate-chev { font-size: 13px; }
+
+/* ─── chips ─── */
+.chip {
+  font-size: 9.5px; letter-spacing: 1.2px; text-transform: uppercase;
+  color: var(--ink-dim); border: 1px solid var(--hair);
+  padding: 1px 7px; border-radius: 3px; font-family: var(--font-cond); font-weight: 700;
+}
+.chip.cli-claude { color: var(--go); border-color: rgba(52,226,154,.3); background: rgba(52,226,154,.05); }
+.callsign {
+  font-family: var(--font-cond); font-weight: 800; font-size: 13px;
+  letter-spacing: 2px; color: var(--ink); text-transform: uppercase;
+}
+
+/* ============================================================
+   LAYOUT A — GRID TOP, DETAIL BOTTOM
+   ============================================================ */
+.A {
+  grid-template-rows: 56px minmax(0, 1fr) minmax(0, 1fr);
+}
+.A .a-grid {
+  padding: 16px 18px; overflow-y: auto;
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,.15));
+}
+.A .a-grid-head {
+  display: flex; align-items: baseline; gap: 14px; margin-bottom: 12px;
+  font-family: var(--font-cond); text-transform: uppercase; letter-spacing: 2px;
+}
+.A .a-grid-head h2 { font-size: 12px; font-weight: 700; color: var(--ink-dim); }
+.A .a-grid-head .ln { flex: 1; height: 1px; background: var(--hair); }
+.A .a-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 10px; }
+.A .a-card {
+  background: linear-gradient(180deg, var(--panel), #0e1115);
+  border: 1px solid var(--hair); border-radius: 5px;
+  display: grid; grid-template-rows: auto 1fr auto; min-height: 130px;
+  cursor: pointer; transition: border-color .14s, transform .14s;
+  position: relative; overflow: hidden;
+}
+.A .a-card:hover { border-color: var(--hair-lit); transform: translateY(-1px); }
+.A .a-card.sel { border-color: var(--hair-lit); box-shadow: inset 0 0 0 1px var(--hair-lit); }
+.A .a-card .a-edge {
+  position: absolute; top: 0; left: 0; bottom: 0; width: 4px;
+}
+.A .a-card.go   .a-edge { background: linear-gradient(180deg, var(--go), #1d7d59); box-shadow: 0 0 10px var(--go-glow); }
+.A .a-card.hold .a-edge { background: linear-gradient(180deg, var(--hold), #a86f0e); box-shadow: 0 0 10px var(--hold-glow); }
+.A .a-card.stop .a-edge { background: linear-gradient(180deg, var(--stop), #7d2020); box-shadow: 0 0 10px var(--stop-glow); }
+.A .a-card.done .a-edge { background: linear-gradient(180deg, var(--done), #1f6a82); }
+.A .a-card.idle .a-edge { background: linear-gradient(180deg, var(--idle), #2a2f36); }
+.A .a-card .a-top { display: flex; align-items: center; gap: 9px; padding: 10px 12px 4px 14px; }
+.A .a-card .a-top .st { font-family: var(--font-cond); font-weight: 800; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; }
+.A .a-card.go   .a-top .st { color: var(--go); }
+.A .a-card.hold .a-top .st { color: var(--hold); }
+.A .a-card.stop .a-top .st { color: var(--stop); }
+.A .a-card.done .a-top .st { color: var(--done); }
+.A .a-card.idle .a-top .st { color: var(--idle); }
+.A .a-card .a-top .proj { font-weight: 700; font-size: 12px; color: var(--ink); margin-left: 2px; }
+.A .a-card .a-top .branch { color: var(--ink-dim); font-size: 10.5px; }
+.A .a-card .a-mid { padding: 4px 12px 8px 14px; }
+.A .a-card .a-task { color: var(--ink); font-size: 12px; line-height: 1.35; margin-bottom: 8px; }
+.A .a-card .a-meta { display: flex; gap: 12px; font-size: 10px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.A .a-card .a-meta b { color: var(--ink); font-weight: 700; }
+.A .a-card .a-bottom { display: grid; grid-template-columns: 1fr 110px; align-items: stretch; border-top: 1px solid var(--hair); }
+.A .a-card .a-ctx { padding: 8px 12px 8px 14px; display: flex; flex-direction: column; gap: 5px; }
+.A .a-card .a-ctx .lbl { font-size: 9px; letter-spacing: 1.5px; color: var(--ink-faint); text-transform: uppercase; display: flex; justify-content: space-between; }
+.A .a-card .a-ctx .lbl b { color: var(--ink); font-weight: 700; }
+.A .a-card .a-ctx .bar { height: 4px; background: var(--panel-2); border-radius: 2px; overflow: hidden; }
+.A .a-card .a-ctx .bar i { display: block; height: 100%; background: linear-gradient(90deg, #1f8c61, var(--go)); border-radius: 2px; }
+
+/* detail bottom half */
+.A .a-detail {
+  border-top: 1px solid var(--hair-lit); background: linear-gradient(180deg, #0a0c0f, #08090b);
+  display: grid; grid-template-columns: 1fr 360px;
+  overflow: hidden;
+  box-shadow: 0 -10px 30px rgba(0,0,0,.4);
+  position: relative;
+}
+.A .a-detail::before {
+  content:""; position: absolute; top: -1px; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--go-glow), transparent); opacity: .4;
+}
+.A .a-detail .a-d-main { padding: 16px 22px; overflow-y: auto; }
+.A .a-detail .a-d-head { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
+.A .a-detail .a-d-head .badge { display: flex; align-items: center; gap: 8px; }
+.A .a-detail .a-d-head .st { font-family: var(--font-cond); font-weight: 700; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--go); }
+.A .a-detail h2 { font-size: 19px; font-weight: 700; }
+.A .a-detail .a-d-path { font-size: 10.5px; color: var(--ink-faint); margin-bottom: 14px; }
+.A .a-detail .gate { margin-left: auto; min-width: 130px; border-left: none; border: 1px solid rgba(52,226,154,.25); border-radius: 4px; }
+.A .a-detail .a-d-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+  background: var(--hair); border: 1px solid var(--hair); border-radius: 4px;
+  overflow: hidden; margin-bottom: 18px;
+}
+.A .a-detail .a-d-stat { background: var(--panel); padding: 10px 12px; }
+.A .a-detail .a-d-stat .k { font-size: 9px; letter-spacing: 1.5px; color: var(--ink-faint); text-transform: uppercase; margin-bottom: 3px; }
+.A .a-detail .a-d-stat .v { font-family: var(--font-cond); font-weight: 700; font-size: 17px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.A .a-detail .a-d-task h4, .A .a-detail .a-d-todos h4 { font-size: 10px; letter-spacing: 2px; color: var(--ink-faint); text-transform: uppercase; margin-bottom: 8px; }
+.A .a-detail .a-d-task p { color: var(--ink); font-size: 13px; line-height: 1.5; margin-bottom: 18px; }
+.A .a-detail .a-d-todos { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.A .a-detail .todo { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; color: var(--ink); }
+.A .a-detail .todo .box { width: 12px; height: 12px; border: 1px solid var(--ink-faint); border-radius: 2px; flex: none; }
+.A .a-detail .todo.done .box { background: var(--go); border-color: var(--go); box-shadow: 0 0 6px var(--go-glow); }
+.A .a-detail .todo.done span { color: var(--ink-dim); text-decoration: line-through; }
+.A .a-detail .a-d-side {
+  border-left: 1px solid var(--hair);
+  padding: 16px 18px;
+  background: linear-gradient(180deg, rgba(0,0,0,.18), transparent);
+  overflow-y: auto;
+}
+.A .a-detail .a-d-side h4 { font-size: 10px; letter-spacing: 2px; color: var(--ink-faint); text-transform: uppercase; margin-bottom: 10px; }
+.A .a-detail .a-d-side .e { font-size: 11px; color: var(--ink-dim); padding: 4px 0; border-bottom: 1px dashed var(--hair); }
+.A .a-detail .a-d-side .e b { color: var(--ink); font-weight: 600; }
+
+/* ============================================================
+   LAYOUT B — STRIP TOP, DETAIL BOTTOM
+   ============================================================ */
+.B { grid-template-rows: 56px minmax(0, 1fr) minmax(0, 1fr); }
+.B .b-strips { padding: 14px 18px; overflow-y: auto; }
+.B .b-group-head { display: flex; align-items: baseline; gap: 14px; margin: 10px 0 8px; font-family: var(--font-cond); text-transform: uppercase; letter-spacing: 2px; font-size: 12px; color: var(--ink-dim); }
+.B .b-group-head .ln { flex: 1; height: 1px; background: var(--hair); }
+.B .b-group-head .c { font-size: 10px; color: var(--ink-faint); }
+.B .b-strip {
+  display: grid; grid-template-columns: 6px 56px 1fr 150px 116px 104px;
+  background: linear-gradient(90deg, var(--panel), #0e1115);
+  border: 1px solid var(--hair); border-radius: 5px;
+  margin-bottom: 8px; cursor: pointer; overflow: hidden; position: relative;
+  transition: border-color .14s, transform .14s;
+}
+.B .b-strip:hover { border-color: var(--hair-lit); transform: translateX(2px); }
+.B .b-strip.sel { border-color: var(--hair-lit); box-shadow: inset 0 0 0 1px var(--hair-lit); }
+.B .b-strip .b-edge {}
+.B .b-strip.go   .b-edge { background: linear-gradient(180deg, var(--go), #1d7d59); box-shadow: 0 0 12px var(--go-glow); }
+.B .b-strip.hold .b-edge { background: linear-gradient(180deg, var(--hold), #a86f0e); box-shadow: 0 0 12px var(--hold-glow); }
+.B .b-strip.stop .b-edge { background: linear-gradient(180deg, var(--stop), #7d2020); }
+.B .b-strip.done .b-edge { background: linear-gradient(180deg, var(--done), #1f6a82); }
+.B .b-strip.idle .b-edge { background: linear-gradient(180deg, var(--idle), #2a2f36); }
+.B .b-strip .b-light { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border-right: 1px solid var(--hair); background: rgba(0,0,0,.18); }
+.B .b-strip .b-light .st { font-family: var(--font-cond); font-weight: 700; font-size: 9.5px; letter-spacing: 1px; }
+.B .b-strip.go   .b-light .st { color: var(--go); }
+.B .b-strip.hold .b-light .st { color: var(--hold); }
+.B .b-strip.done .b-light .st { color: var(--done); }
+.B .b-strip.idle .b-light .st { color: var(--idle); }
+.B .b-strip .b-body { padding: 9px 14px; min-width: 0; }
+.B .b-strip .b-row1 { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+.B .b-strip .b-task { font-size: 12px; color: var(--ink); }
+.B .b-strip .b-gauge { padding: 9px 14px; border-left: 1px solid var(--hair); display: flex; flex-direction: column; gap: 7px; justify-content: center; }
+.B .b-strip .b-gauge .glbl { font-size: 9px; letter-spacing: 1.5px; color: var(--ink-faint); text-transform: uppercase; display: flex; justify-content: space-between; }
+.B .b-strip .b-gauge .glbl b { color: var(--ink); }
+.B .b-strip .b-gauge .bar { height: 4px; background: var(--panel-2); border-radius: 2px; overflow: hidden; }
+.B .b-strip .b-gauge .bar i { display: block; height: 100%; background: linear-gradient(90deg, #1f8c61, var(--go)); border-radius: 2px; }
+.B .b-strip .b-gauge .tok { font-size: 10px; color: var(--ink-dim); }
+.B .b-strip .b-meta { padding: 9px 14px; border-left: 1px solid var(--hair); display: flex; flex-direction: column; justify-content: center; gap: 5px; text-align: right; }
+.B .b-strip .b-meta .timer { font-family: var(--font-cond); font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; }
+.B .b-strip.go .b-meta .timer { color: var(--go); }
+.B .b-strip.hold .b-meta .timer { color: var(--hold); }
+.B .b-strip.done .b-meta .timer, .B .b-strip.idle .b-meta .timer { color: var(--ink-dim); }
+.B .b-strip .b-meta .seen { font-size: 9.5px; color: var(--ink-faint); letter-spacing: .5px; text-transform: uppercase; }
+.B .b-strip .b-meta .todo-pill { display: inline-flex; align-self: flex-end; align-items: center; gap: 5px; font-size: 10px; color: var(--ink-dim); border: 1px solid var(--hair); border-radius: 10px; padding: 1px 8px; }
+.B .b-strip .b-meta .todo-pill b { color: var(--ink); }
+
+/* detail bottom — reuse layout A's detail block */
+.B .a-detail { border-top: 1px solid var(--hair-lit); background: linear-gradient(180deg, #0a0c0f, #08090b); display: grid; grid-template-columns: 1fr 360px; overflow: hidden; box-shadow: 0 -10px 30px rgba(0,0,0,.4); position: relative; }
+.B .a-detail::before { content:""; position: absolute; top: -1px; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--go-glow), transparent); opacity: .4; }
+.B .a-detail .a-d-main { padding: 16px 22px; overflow-y: auto; }
+.B .a-detail .a-d-head { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
+.B .a-detail .a-d-head .badge { display: flex; align-items: center; gap: 8px; }
+.B .a-detail .a-d-head .st { font-family: var(--font-cond); font-weight: 700; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--go); }
+.B .a-detail h2 { font-size: 19px; font-weight: 700; }
+.B .a-detail .a-d-path { font-size: 10.5px; color: var(--ink-faint); margin-bottom: 14px; }
+.B .a-detail .gate { margin-left: auto; min-width: 130px; border-left: none; border: 1px solid rgba(52,226,154,.25); border-radius: 4px; }
+.B .a-detail .a-d-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--hair); border: 1px solid var(--hair); border-radius: 4px; overflow: hidden; margin-bottom: 18px; }
+.B .a-detail .a-d-stat { background: var(--panel); padding: 10px 12px; }
+.B .a-detail .a-d-stat .k { font-size: 9px; letter-spacing: 1.5px; color: var(--ink-faint); text-transform: uppercase; margin-bottom: 3px; }
+.B .a-detail .a-d-stat .v { font-family: var(--font-cond); font-weight: 700; font-size: 17px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.B .a-detail .a-d-task h4, .B .a-detail .a-d-todos h4 { font-size: 10px; letter-spacing: 2px; color: var(--ink-faint); text-transform: uppercase; margin-bottom: 8px; }
+.B .a-detail .a-d-task p { color: var(--ink); font-size: 13px; line-height: 1.5; margin-bottom: 18px; }
+.B .a-detail .a-d-todos { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.B .a-detail .todo { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; color: var(--ink); }
+.B .a-detail .todo .box { width: 12px; height: 12px; border: 1px solid var(--ink-faint); border-radius: 2px; flex: none; }
+.B .a-detail .todo.done .box { background: var(--go); border-color: var(--go); box-shadow: 0 0 6px var(--go-glow); }
+.B .a-detail .todo.done span { color: var(--ink-dim); text-decoration: line-through; }
+.B .a-detail .a-d-side { border-left: 1px solid var(--hair); padding: 16px 18px; background: linear-gradient(180deg, rgba(0,0,0,.18), transparent); overflow-y: auto; }
+.B .a-detail .a-d-side h4 { font-size: 10px; letter-spacing: 2px; color: var(--ink-faint); text-transform: uppercase; margin-bottom: 10px; }
+.B .a-detail .a-d-side .e { font-size: 11px; color: var(--ink-dim); padding: 4px 0; border-bottom: 1px dashed var(--hair); }
+.B .a-detail .a-d-side .e b { color: var(--ink); font-weight: 600; }
+
+/* ============================================================
+   LAYOUT C — WALLBOARD (drawer detail)
+   ============================================================ */
+.C { grid-template-rows: 56px 1fr; position: relative; }
+.C .c-wall { padding: 14px 18px 22px; overflow-y: auto; }
+.C .c-group-head { display: flex; align-items: baseline; gap: 14px; margin: 12px 0 10px; font-family: var(--font-cond); text-transform: uppercase; letter-spacing: 2px; font-size: 12px; color: var(--ink-dim); }
+.C .c-group-head .ln { flex: 1; height: 1px; background: var(--hair); }
+.C .c-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.C .c-card {
+  background: linear-gradient(180deg, var(--panel), #0e1115);
+  border: 1px solid var(--hair); border-radius: 6px;
+  position: relative; overflow: hidden; cursor: pointer;
+  display: grid; grid-template-rows: auto 1fr auto; min-height: 150px;
+  transition: border-color .14s, transform .14s;
+}
+.C .c-card:hover { border-color: var(--hair-lit); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+.C .c-card .c-edge { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.C .c-card.go   .c-edge { background: var(--go);   box-shadow: 0 0 10px var(--go-glow); }
+.C .c-card.hold .c-edge { background: var(--hold); box-shadow: 0 0 10px var(--hold-glow); }
+.C .c-card.done .c-edge { background: var(--done); box-shadow: 0 0 10px var(--done-glow); }
+.C .c-card.idle .c-edge { background: var(--idle); }
+.C .c-card .c-top { padding: 14px 14px 6px; display: flex; align-items: center; gap: 9px; }
+.C .c-card .c-top .st { font-family: var(--font-cond); font-weight: 800; font-size: 11px; letter-spacing: 1.8px; text-transform: uppercase; }
+.C .c-card.go   .c-top .st { color: var(--go); }
+.C .c-card.hold .c-top .st { color: var(--hold); }
+.C .c-card.done .c-top .st { color: var(--done); }
+.C .c-card.idle .c-top .st { color: var(--idle); }
+.C .c-card .c-proj { padding: 0 14px 8px; }
+.C .c-card .c-proj h3 { font-family: var(--font-cond); font-weight: 700; font-size: 17px; letter-spacing: .5px; }
+.C .c-card .c-proj .branch { font-size: 11px; color: var(--ink-dim); }
+.C .c-card .c-mid { padding: 4px 14px 10px; color: var(--ink); font-size: 12px; line-height: 1.4; }
+.C .c-card .c-stats { display: flex; gap: 14px; padding: 0 14px 12px; font-size: 10px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.C .c-card .c-stats b { color: var(--ink); font-weight: 700; }
+.C .c-card .c-bottom { border-top: 1px solid var(--hair); display: grid; grid-template-columns: 1fr 110px; align-items: stretch; }
+.C .c-card .c-meta { padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: var(--ink-dim); }
+.C .c-card .c-meta .timer { font-family: var(--font-cond); font-weight: 700; font-size: 14px; color: var(--ink); }
+.C .c-card .c-meta .todo { font-size: 10px; color: var(--ink-dim); }
+/* drawer */
+.C .c-drawer {
+  position: absolute; top: 56px; right: 0; bottom: 0; width: 480px;
+  background: linear-gradient(180deg, #0a0c0f, #08090b);
+  border-left: 1px solid var(--hair-lit);
+  box-shadow: -16px 0 40px rgba(0,0,0,.55);
+  transform: translateX(100%); transition: transform .25s ease;
+  overflow-y: auto; padding: 20px 24px;
+}
+.C .c-drawer.open { transform: translateX(0); }
+.C .c-drawer::before { content:""; position: absolute; top: 0; bottom: 0; left: -1px; width: 1px; background: linear-gradient(180deg, transparent, var(--go-glow), transparent); opacity: .5; }
+.C .c-drawer .close { position: absolute; top: 14px; right: 16px; background: transparent; border: 1px solid var(--hair); color: var(--ink-faint); width: 24px; height: 24px; border-radius: 3px; cursor: pointer; }
+.C .c-drawer .close:hover { color: var(--ink); border-color: var(--hair-lit); }
+.C .c-drawer .d-badge { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+.C .c-drawer .d-badge .st { font-family: var(--font-cond); font-weight: 700; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--go); }
+.C .c-drawer h2 { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
+.C .c-drawer .d-path { font-size: 10.5px; color: var(--ink-faint); margin-bottom: 14px; }
+.C .c-drawer .gate { border-left: none; border: 1px solid rgba(52,226,154,.25); border-radius: 4px; margin-bottom: 16px; min-height: 64px; }
+.C .c-drawer .d-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--hair); border: 1px solid var(--hair); border-radius: 4px; overflow: hidden; margin-bottom: 18px; }
+.C .c-drawer .d-stat { background: var(--panel); padding: 10px 12px; }
+.C .c-drawer .d-stat .k { font-size: 9px; letter-spacing: 1.5px; color: var(--ink-faint); text-transform: uppercase; margin-bottom: 3px; }
+.C .c-drawer .d-stat .v { font-family: var(--font-cond); font-weight: 700; font-size: 17px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.C .c-drawer h4 { font-size: 10px; letter-spacing: 2px; color: var(--ink-faint); text-transform: uppercase; margin: 14px 0 8px; }
+.C .c-drawer .todo { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; color: var(--ink); }
+.C .c-drawer .todo .box { width: 12px; height: 12px; border: 1px solid var(--ink-faint); border-radius: 2px; flex: none; }
+.C .c-drawer .todo.done .box { background: var(--go); border-color: var(--go); }
+.C .c-drawer .todo.done span { color: var(--ink-dim); text-decoration: line-through; }
+
+/* ============================================================
+   LAYOUT D — MASTER/DETAIL (Linear-style)
+   ============================================================ */
+.D { grid-template-rows: 56px 1fr; grid-template-columns: 260px 1fr; }
+.D .hd { grid-column: 1 / -1; }
+.D .d-side {
+  border-right: 1px solid var(--hair);
+  background: linear-gradient(180deg, #0b0d10, #090a0c);
+  padding: 14px 0; overflow-y: auto;
+}
+.D .d-side h3 { font-size: 9.5px; letter-spacing: 2.5px; color: var(--ink-faint); text-transform: uppercase; padding: 0 16px 8px; }
+.D .d-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+  cursor: pointer; border-left: 2px solid transparent;
+  transition: background .12s, border-color .12s;
+}
+.D .d-row:hover { background: var(--panel); }
+.D .d-row.sel { background: var(--panel-2); border-left-color: var(--go); }
+.D .d-row .led { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.D .d-row.go   .led { background: var(--go);   box-shadow: 0 0 6px var(--go-glow); }
+.D .d-row.hold .led { background: var(--hold); box-shadow: 0 0 6px var(--hold-glow); animation: pulse 1.8s ease-in-out infinite; }
+.D .d-row.done .led { background: var(--done); box-shadow: 0 0 6px var(--done-glow); }
+.D .d-row.idle .led { background: var(--idle); }
+.D .d-row .info { min-width: 0; flex: 1; }
+.D .d-row .info .proj { font-weight: 700; font-size: 12.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.D .d-row .info .task { font-size: 10.5px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.D .d-row .gate-mini {
+  font-family: var(--font-cond); font-size: 9px; letter-spacing: 1.5px; font-weight: 700;
+  color: var(--go); padding: 2px 6px; border: 1px solid rgba(52,226,154,.3);
+  border-radius: 3px; background: rgba(52,226,154,.06); flex: none;
+}
+.D .d-side .add { padding: 14px 16px; color: var(--ink-faint); font-size: 11px; border-top: 1px dashed var(--hair); }
+
+.D .d-main { overflow-y: auto; padding: 20px 26px; background: linear-gradient(180deg, transparent, rgba(0,0,0,.1)); }
+.D .d-main .d-head { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
+.D .d-main .d-head .badge { display: flex; align-items: center; gap: 9px; }
+.D .d-main .d-head .st { font-family: var(--font-cond); font-weight: 700; font-size: 12px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--go); }
+.D .d-main h2 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.D .d-main .d-path { font-size: 11px; color: var(--ink-faint); margin-bottom: 16px; }
+.D .d-main .gate { min-height: 64px; min-width: 140px; border-left: none; border: 1px solid rgba(52,226,154,.25); border-radius: 4px; margin-left: auto; }
+.D .d-main .d-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--hair); border: 1px solid var(--hair); border-radius: 5px; overflow: hidden; margin-bottom: 22px; }
+.D .d-main .d-stat { background: var(--panel); padding: 12px 14px; }
+.D .d-main .d-stat .k { font-size: 9px; letter-spacing: 1.5px; color: var(--ink-faint); text-transform: uppercase; margin-bottom: 4px; }
+.D .d-main .d-stat .v { font-family: var(--font-cond); font-weight: 700; font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.D .d-main .d-block { background: rgba(15,18,22,.5); border: 1px solid var(--hair); border-radius: 5px; padding: 16px; margin-bottom: 14px; }
+.D .d-main .d-block h4 { font-size: 10px; letter-spacing: 2px; color: var(--ink-faint); text-transform: uppercase; margin-bottom: 10px; }
+.D .d-main .d-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.D .d-main .todo { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; color: var(--ink); }
+.D .d-main .todo .box { width: 12px; height: 12px; border: 1px solid var(--ink-faint); border-radius: 2px; flex: none; }
+.D .d-main .todo.done .box { background: var(--go); border-color: var(--go); box-shadow: 0 0 6px var(--go-glow); }
+.D .d-main .todo.done span { color: var(--ink-dim); text-decoration: line-through; }
+.D .d-main .quoted { font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim); line-height: 1.5; padding-left: 10px; border-left: 2px solid rgba(52,226,154,.25); }
+
+/* footer hint */
+.hint {
+  position: fixed; bottom: 12px; left: 12px;
+  font-size: 10px; color: var(--ink-faint); letter-spacing: 1px;
+  text-transform: uppercase; font-family: var(--font-cond);
+  background: rgba(15,18,22,.85); border: 1px solid var(--hair);
+  padding: 5px 10px; border-radius: 3px;
+}
+.hint b { color: var(--ink-dim); }
+</style>
+</head>
+<body>
+
+<!-- ─────────── switcher ─────────── -->
+<div class="switcher" role="tablist" aria-label="Layout variants">
+  <span class="sub">LAYOUT</span>
+  <button data-target="A" class="active">A · Grid + Detail ↓</button>
+  <button data-target="B">B · Strips + Detail ↓</button>
+  <button data-target="C">C · Wallboard + Drawer</button>
+  <button data-target="D">D · Master / Detail</button>
+</div>
+
+<div class="layout-stage">
+
+  <!-- ═══════════════════════ LAYOUT A ═══════════════════════ -->
+  <div class="frame A active">
+    <!-- HEADER -->
+    <header class="hd">
+      <div class="brand">
+        <div class="radar"></div>
+        <div>
+          <h1>Ground Control</h1>
+          <div class="sub">session orchestrator · 6 tracked</div>
+        </div>
+      </div>
+      <div class="clock"><b>13:42:08</b><span>LIVE</span></div>
+      <div class="tally">
+        <div class="t hold"><span class="dot"></span><span class="num">1</span><span class="lbl">waiting</span></div>
+        <div class="t go"><span class="dot"></span><span class="num">3</span><span class="lbl">working</span></div>
+        <div class="t stop"><span class="dot"></span><span class="num">0</span><span class="lbl">blocked</span></div>
+      </div>
+      <div class="cmd">⌕ <input placeholder="filter sessions / jump to project…" /><kbd>⌘K</kbd></div>
+    </header>
+
+    <!-- TOP HALF: GRID -->
+    <main class="a-grid">
+      <div class="a-grid-head"><h2>Needs you</h2><span class="ln"></span></div>
+      <div class="a-cards">
+        <div class="a-card hold sel" onclick="">
+          <div class="a-edge"></div>
+          <div class="a-top">
+            <span class="led-lg"></span>
+            <span class="st">Holding</span>
+            <span class="proj">api-gateway</span>
+            <span class="branch">⎇ migrate</span>
+          </div>
+          <div class="a-mid">
+            <div class="a-task">⏸ wants to run <code style="color:var(--hold);background:rgba(255,182,39,.08);padding:1px 5px;border-radius:2px">npm run db:migrate</code></div>
+            <div class="a-meta"><span>CTX <b>23%</b></span><span><b>12k</b> tok</span><span class="callsign" style="font-size:10px">DELTA-7</span></div>
+          </div>
+          <div class="a-bottom">
+            <div class="a-ctx">
+              <div class="lbl"><span>CTX</span><b>23%</b></div>
+              <div class="bar"><i style="width:23%"></i></div>
+            </div>
+            <button class="gate gate-bound gate-sm">
+              <span class="gate-tag">GATE</span>
+              <span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span>
+              <span class="gate-runway"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="a-grid-head"><h2>In motion</h2><span class="ln"></span></div>
+      <div class="a-cards">
+
+        <div class="a-card go">
+          <div class="a-edge"></div>
+          <div class="a-top"><span class="led-lg"></span><span class="st">Working</span><span class="proj">traffic-control</span><span class="branch">⎇ main</span></div>
+          <div class="a-mid">
+            <div class="a-task">⚙ Building the board UI<span style="display:inline-block;width:6px;height:11px;background:var(--go);margin-left:3px;vertical-align:middle;animation:pulse 1s steps(2) infinite"></span></div>
+            <div class="a-meta"><span>CTX <b>41%</b></span><span><b>16k</b> tok</span><span class="callsign" style="font-size:10px">TANGO-42</span></div>
+          </div>
+          <div class="a-bottom">
+            <div class="a-ctx"><div class="lbl"><span>CTX</span><b>41%</b></div><div class="bar"><i style="width:41%"></i></div></div>
+            <button class="gate gate-bound gate-sm"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+
+        <div class="a-card go">
+          <div class="a-edge"></div>
+          <div class="a-top"><span class="led-lg"></span><span class="st">Working</span><span class="proj">inference-ai</span><span class="branch">⎇ drafts</span></div>
+          <div class="a-mid">
+            <div class="a-task">⚙ Drafting outline of LLM-era engineering essay<span style="display:inline-block;width:6px;height:11px;background:var(--go);margin-left:3px;vertical-align:middle;animation:pulse 1s steps(2) infinite"></span></div>
+            <div class="a-meta"><span>CTX <b>67%</b></span><span><b>89k</b> tok</span><span class="callsign" style="font-size:10px">FOXTROT-19</span></div>
+          </div>
+          <div class="a-bottom">
+            <div class="a-ctx"><div class="lbl"><span>CTX</span><b>67%</b></div><div class="bar"><i style="width:67%;background:linear-gradient(90deg,#a86f0e,var(--hold))"></i></div></div>
+            <button class="gate gate-bound gate-sm"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+
+        <div class="a-card go">
+          <div class="a-edge"></div>
+          <div class="a-top"><span class="led-lg"></span><span class="st">Working</span><span class="proj">docs-site</span><span class="branch">⎇ v2-migrate</span></div>
+          <div class="a-mid">
+            <div class="a-task">⚙ Migrating MDX files to new schema<span style="display:inline-block;width:6px;height:11px;background:var(--go);margin-left:3px;vertical-align:middle;animation:pulse 1s steps(2) infinite"></span></div>
+            <div class="a-meta"><span>CTX <b>8%</b></span><span><b>1.2k</b> tok</span><span class="callsign" style="font-size:10px">JULIET-3</span></div>
+          </div>
+          <div class="a-bottom">
+            <div class="a-ctx"><div class="lbl"><span>CTX</span><b>8%</b></div><div class="bar"><i style="width:8%"></i></div></div>
+            <button class="gate gate-bound gate-sm"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="a-grid-head"><h2>Resolved &amp; stale</h2><span class="ln"></span></div>
+      <div class="a-cards">
+        <div class="a-card done">
+          <div class="a-edge"></div>
+          <div class="a-top"><span class="led-lg"></span><span class="st">Done</span><span class="proj">invoices</span><span class="branch">⎇ main</span></div>
+          <div class="a-mid">
+            <div class="a-task">✓ completed — all todos done</div>
+            <div class="a-meta"><span>CTX <b>12%</b></span><span><b>4k</b> tok</span><span class="callsign" style="font-size:10px">OSCAR-88</span></div>
+          </div>
+          <div class="a-bottom">
+            <div class="a-ctx"><div class="lbl"><span>CTX</span><b>12%</b></div><div class="bar"><i style="width:12%;background:linear-gradient(90deg,#1f6a82,var(--done))"></i></div></div>
+            <button class="gate gate-bound gate-sm"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+
+        <div class="a-card idle">
+          <div class="a-edge"></div>
+          <div class="a-top"><span class="led-lg"></span><span class="st">Stale</span><span class="proj">old-thing</span></div>
+          <div class="a-mid">
+            <div class="a-task" style="color:var(--ink-dim)">stale — no signal for 14m</div>
+            <div class="a-meta"><span>CTX <b>0%</b></span><span><b>0</b> tok</span><span class="callsign" style="font-size:10px">ZULU-11</span></div>
+          </div>
+          <div class="a-bottom">
+            <div class="a-ctx"><div class="lbl"><span>CTX</span><b>0%</b></div><div class="bar"></div></div>
+            <div class="gate gate-unbound gate-sm"><span class="gate-tag">— — —</span><span class="gate-row"><span class="gate-chev"><i>·</i><i>·</i><i>·</i></span><span class="gate-dest">NO LINK</span></span><span class="gate-runway gate-runway-off"></span></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- BOTTOM HALF: DETAIL -->
+    <section class="a-detail">
+      <div class="a-d-main">
+        <div class="a-d-head">
+          <div class="badge"><span class="led-lg" style="background:var(--hold);box-shadow:0 0 10px var(--hold-glow)"></span><span class="st" style="color:var(--hold)">Holding · needs approval</span></div>
+          <h2><span class="callsign">DELTA-7</span> &nbsp; api-gateway</h2>
+          <button class="gate gate-bound" style="min-width:140px">
+            <span class="gate-tag">GATE</span>
+            <span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span>
+            <span class="gate-runway"></span>
+          </button>
+        </div>
+        <div class="a-d-path">~/projects/api-gateway · ⎇ migrate · claude · #d7a3e2 · 14 msgs</div>
+        <div class="a-d-stats">
+          <div class="a-d-stat"><div class="k">Model</div><div class="v" style="font-size:13px">opus-4-7</div></div>
+          <div class="a-d-stat"><div class="k">Elapsed</div><div class="v">9m 02s</div></div>
+          <div class="a-d-stat"><div class="k">Tokens</div><div class="v">12k <span style="font-size:12px;color:var(--ink-dim)">in / 1.8k out</span></div></div>
+          <div class="a-d-stat"><div class="k">Lines</div><div class="v">+47 / -3</div></div>
+        </div>
+        <div class="a-d-task">
+          <h4>Current task <span style="color:var(--ink-faint);text-transform:none;letter-spacing:.5px">· claude · permission</span></h4>
+          <p>⏸ awaiting approval · <code style="color:var(--hold);background:rgba(255,182,39,.08);padding:1px 5px;border-radius:2px">Bash: npm run db:migrate -- --target=20260527</code></p>
+        </div>
+        <div class="a-d-todos">
+          <div>
+            <h4>Claude todos <span style="color:var(--ink-faint);text-transform:none;letter-spacing:.5px">· 2 / 5</span></h4>
+            <div class="todo done"><span class="box"></span><span>Inspect existing migration history</span></div>
+            <div class="todo done"><span class="box"></span><span>Stage v20260527 schema diff</span></div>
+            <div class="todo"><span class="box"></span><span>Run migration (waiting on approval)</span></div>
+            <div class="todo"><span class="box"></span><span>Verify foreign-key indexes</span></div>
+            <div class="todo"><span class="box"></span><span>Update docs/CHANGELOG.md</span></div>
+          </div>
+          <div>
+            <h4>Your checklist</h4>
+            <div class="todo"><span class="box"></span><span>Eyeball the down-migration</span></div>
+            <div class="todo done"><span class="box"></span><span>Snapshot DB before approving</span></div>
+            <div style="color:var(--ink-faint);font-size:11px;margin-top:8px">+ add todo…</div>
+          </div>
+        </div>
+      </div>
+      <aside class="a-d-side">
+        <h4>Activity</h4>
+        <div class="e"><b>12s</b> · permission · Bash npm run db:migrate</div>
+        <div class="e"><b>34s</b> · pre-tool · Read migrations/20260527_*.sql</div>
+        <div class="e"><b>1m</b> · post-tool · TodoWrite (3 updated)</div>
+        <div class="e"><b>2m</b> · prompt · "ok run the migration"</div>
+        <div class="e"><b>4m</b> · post-tool · Bash psql -c "\d users"</div>
+        <h4 style="margin-top:18px">Notes</h4>
+        <div style="font-size:11.5px;color:var(--ink-dim);font-style:italic">"Need to coordinate with @sara before the migration lands — they're holding the read replica steady."</div>
+      </aside>
+    </section>
+  </div>
+
+
+  <!-- ═══════════════════════ LAYOUT B ═══════════════════════ -->
+  <div class="frame B">
+    <header class="hd">
+      <div class="brand"><div class="radar"></div><div><h1>Ground Control</h1><div class="sub">session orchestrator · 6 tracked</div></div></div>
+      <div class="clock"><b>13:42:08</b><span>LIVE</span></div>
+      <div class="tally">
+        <div class="t hold"><span class="dot"></span><span class="num">1</span><span class="lbl">waiting</span></div>
+        <div class="t go"><span class="dot"></span><span class="num">3</span><span class="lbl">working</span></div>
+        <div class="t stop"><span class="dot"></span><span class="num">0</span><span class="lbl">blocked</span></div>
+      </div>
+      <div class="cmd">⌕ <input placeholder="filter…" /><kbd>⌘K</kbd></div>
+    </header>
+
+    <main class="b-strips">
+      <div class="b-group-head"><span>Needs you</span><span class="ln"></span><span class="c">1</span></div>
+      <div class="b-strip hold sel">
+        <div class="b-edge"></div>
+        <div class="b-light"><span class="led-lg"></span><span class="st">HOLD</span></div>
+        <div class="b-body">
+          <div class="b-row1"><span class="callsign">DELTA-7</span><span style="color:var(--ink)">api-gateway</span><span style="color:var(--ink-dim);font-size:11px">⎇ migrate</span><span class="chip cli-claude">claude</span></div>
+          <div class="b-task">⏸ wants to run <code style="color:var(--hold)">npm run db:migrate</code></div>
+        </div>
+        <div class="b-gauge"><div class="glbl"><span>CTX</span><b>23%</b></div><div class="bar"><i style="width:23%"></i></div><div class="tok">12k tok</div></div>
+        <div class="b-meta"><div class="timer">9m 02</div><div class="seen">12s ago</div><span class="todo-pill">◴ <b>2</b>/5</span></div>
+        <button class="gate gate-bound"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+      </div>
+
+      <div class="b-group-head"><span>In motion</span><span class="ln"></span><span class="c">3</span></div>
+      <div class="b-strip go">
+        <div class="b-edge"></div>
+        <div class="b-light"><span class="led-lg"></span><span class="st">GO</span></div>
+        <div class="b-body">
+          <div class="b-row1"><span class="callsign">TANGO-42</span><span style="color:var(--ink)">traffic-control</span><span style="color:var(--ink-dim);font-size:11px">⎇ main</span><span class="chip cli-claude">claude</span></div>
+          <div class="b-task">⚙ Building the board UI</div>
+        </div>
+        <div class="b-gauge"><div class="glbl"><span>CTX</span><b>41%</b></div><div class="bar"><i style="width:41%"></i></div><div class="tok">16k tok</div></div>
+        <div class="b-meta"><div class="timer">12m 34</div><div class="seen">active now</div><span class="todo-pill">◴ <b>2</b>/4</span></div>
+        <button class="gate gate-bound"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+      </div>
+      <div class="b-strip go">
+        <div class="b-edge"></div>
+        <div class="b-light"><span class="led-lg"></span><span class="st">GO</span></div>
+        <div class="b-body">
+          <div class="b-row1"><span class="callsign">FOXTROT-19</span><span style="color:var(--ink)">inference-ai</span><span style="color:var(--ink-dim);font-size:11px">⎇ drafts</span><span class="chip cli-claude">claude</span></div>
+          <div class="b-task">⚙ Drafting outline of LLM-era engineering essay</div>
+        </div>
+        <div class="b-gauge"><div class="glbl"><span>CTX</span><b>67%</b></div><div class="bar"><i style="width:67%;background:linear-gradient(90deg,#a86f0e,var(--hold))"></i></div><div class="tok">89k tok</div></div>
+        <div class="b-meta"><div class="timer">28m 11</div><div class="seen">active now</div><span class="todo-pill">◴ <b>3</b>/8</span></div>
+        <button class="gate gate-bound"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+      </div>
+      <div class="b-strip go">
+        <div class="b-edge"></div>
+        <div class="b-light"><span class="led-lg"></span><span class="st">GO</span></div>
+        <div class="b-body">
+          <div class="b-row1"><span class="callsign">JULIET-3</span><span style="color:var(--ink)">docs-site</span><span style="color:var(--ink-dim);font-size:11px">⎇ v2-migrate</span><span class="chip cli-claude">claude</span></div>
+          <div class="b-task">⚙ Migrating MDX files to new schema</div>
+        </div>
+        <div class="b-gauge"><div class="glbl"><span>CTX</span><b>8%</b></div><div class="bar"><i style="width:8%"></i></div><div class="tok">1.2k tok</div></div>
+        <div class="b-meta"><div class="timer">4m 09</div><div class="seen">active now</div><span class="todo-pill">◴ <b>0</b>/2</span></div>
+        <button class="gate gate-bound"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+      </div>
+
+      <div class="b-group-head"><span>Resolved &amp; stale</span><span class="ln"></span><span class="c">2</span></div>
+      <div class="b-strip done">
+        <div class="b-edge"></div>
+        <div class="b-light"><span class="led-lg"></span><span class="st">DONE</span></div>
+        <div class="b-body">
+          <div class="b-row1"><span class="callsign">OSCAR-88</span><span style="color:var(--ink)">invoices</span><span style="color:var(--ink-dim);font-size:11px">⎇ main</span><span class="chip cli-claude">claude</span></div>
+          <div class="b-task">✓ completed — all todos done</div>
+        </div>
+        <div class="b-gauge"><div class="glbl"><span>CTX</span><b>12%</b></div><div class="bar"><i style="width:12%;background:linear-gradient(90deg,#1f6a82,var(--done))"></i></div><div class="tok">4k tok</div></div>
+        <div class="b-meta"><div class="timer">—</div><div class="seen">3m ago</div><span class="todo-pill">◴ <b>5</b>/5</span></div>
+        <button class="gate gate-bound"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+      </div>
+      <div class="b-strip idle">
+        <div class="b-edge"></div>
+        <div class="b-light"><span class="led-lg"></span><span class="st">IDLE</span></div>
+        <div class="b-body">
+          <div class="b-row1"><span class="callsign">ZULU-11</span><span style="color:var(--ink)">old-thing</span><span class="chip cli-claude">claude</span></div>
+          <div class="b-task" style="color:var(--ink-dim)">stale — no signal for 14m</div>
+        </div>
+        <div class="b-gauge"><div class="glbl"><span>CTX</span><b>0%</b></div><div class="bar"></div><div class="tok">0 tok</div></div>
+        <div class="b-meta"><div class="timer">—</div><div class="seen">14m ago</div><span class="todo-pill">◴ <b>0</b>/0</span></div>
+        <div class="gate gate-unbound"><span class="gate-tag">— — —</span><span class="gate-row"><span class="gate-chev"><i>·</i><i>·</i><i>·</i></span><span class="gate-dest">NO LINK</span></span><span class="gate-runway gate-runway-off"></span></div>
+      </div>
+    </main>
+
+    <!-- bottom detail (re-uses A's structure) -->
+    <section class="a-detail">
+      <div class="a-d-main">
+        <div class="a-d-head">
+          <div class="badge"><span class="led-lg" style="background:var(--hold);box-shadow:0 0 10px var(--hold-glow)"></span><span class="st" style="color:var(--hold)">Holding · needs approval</span></div>
+          <h2><span class="callsign">DELTA-7</span> &nbsp; api-gateway</h2>
+          <button class="gate gate-bound" style="min-width:140px"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+        </div>
+        <div class="a-d-path">~/projects/api-gateway · ⎇ migrate · claude · #d7a3e2 · 14 msgs</div>
+        <div class="a-d-stats">
+          <div class="a-d-stat"><div class="k">Model</div><div class="v" style="font-size:13px">opus-4-7</div></div>
+          <div class="a-d-stat"><div class="k">Elapsed</div><div class="v">9m 02s</div></div>
+          <div class="a-d-stat"><div class="k">Tokens</div><div class="v">12k in</div></div>
+          <div class="a-d-stat"><div class="k">Lines</div><div class="v">+47 / -3</div></div>
+        </div>
+        <div class="a-d-task">
+          <h4>Current task</h4>
+          <p>⏸ awaiting approval · <code style="color:var(--hold);background:rgba(255,182,39,.08);padding:1px 5px;border-radius:2px">Bash: npm run db:migrate -- --target=20260527</code></p>
+        </div>
+        <div class="a-d-todos">
+          <div>
+            <h4>Claude todos · 2 / 5</h4>
+            <div class="todo done"><span class="box"></span><span>Inspect existing migration history</span></div>
+            <div class="todo done"><span class="box"></span><span>Stage v20260527 schema diff</span></div>
+            <div class="todo"><span class="box"></span><span>Run migration (waiting on approval)</span></div>
+          </div>
+          <div>
+            <h4>Your checklist</h4>
+            <div class="todo"><span class="box"></span><span>Eyeball the down-migration</span></div>
+            <div class="todo done"><span class="box"></span><span>Snapshot DB before approving</span></div>
+          </div>
+        </div>
+      </div>
+      <aside class="a-d-side">
+        <h4>Activity</h4>
+        <div class="e"><b>12s</b> · permission · Bash db:migrate</div>
+        <div class="e"><b>34s</b> · pre-tool · Read migrations</div>
+        <div class="e"><b>1m</b> · post-tool · TodoWrite</div>
+        <div class="e"><b>2m</b> · prompt · "run the migration"</div>
+        <h4 style="margin-top:18px">Notes</h4>
+        <div style="font-size:11.5px;color:var(--ink-dim);font-style:italic">"Coordinate with @sara before merging…"</div>
+      </aside>
+    </section>
+  </div>
+
+
+  <!-- ═══════════════════════ LAYOUT C ═══════════════════════ -->
+  <div class="frame C">
+    <header class="hd">
+      <div class="brand"><div class="radar"></div><div><h1>Ground Control</h1><div class="sub">session orchestrator · 6 tracked</div></div></div>
+      <div class="clock"><b>13:42:08</b><span>LIVE</span></div>
+      <div class="tally">
+        <div class="t hold"><span class="dot"></span><span class="num">1</span><span class="lbl">waiting</span></div>
+        <div class="t go"><span class="dot"></span><span class="num">3</span><span class="lbl">working</span></div>
+        <div class="t stop"><span class="dot"></span><span class="num">0</span><span class="lbl">blocked</span></div>
+      </div>
+      <div class="cmd">⌕ <input placeholder="filter…" /><kbd>⌘K</kbd></div>
+    </header>
+
+    <main class="c-wall">
+      <div class="c-group-head"><span>Needs you</span><span class="ln"></span></div>
+      <div class="c-cards">
+        <div class="c-card hold" onclick="document.querySelector('.C .c-drawer').classList.add('open')">
+          <div class="c-edge"></div>
+          <div class="c-top"><span class="led-lg"></span><span class="st">Holding</span></div>
+          <div class="c-proj"><h3>api-gateway</h3><span class="branch">⎇ migrate · DELTA-7</span></div>
+          <div class="c-mid">⏸ wants to run <code style="color:var(--hold);background:rgba(255,182,39,.08);padding:0 4px;border-radius:2px">npm run db:migrate</code></div>
+          <div class="c-stats"><span>CTX <b>23%</b></span><span><b>12k</b> tok</span><span><b>9m</b></span></div>
+          <div class="c-bottom">
+            <div class="c-meta"><span class="timer">9m 02</span><span>2/5 todos · 12s ago</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="c-group-head"><span>In motion</span><span class="ln"></span></div>
+      <div class="c-cards">
+        <div class="c-card go">
+          <div class="c-edge"></div>
+          <div class="c-top"><span class="led-lg"></span><span class="st">Working</span></div>
+          <div class="c-proj"><h3>traffic-control</h3><span class="branch">⎇ main · TANGO-42</span></div>
+          <div class="c-mid">⚙ Building the board UI<span style="display:inline-block;width:6px;height:11px;background:var(--go);margin-left:3px;vertical-align:middle;animation:pulse 1s steps(2) infinite"></span></div>
+          <div class="c-stats"><span>CTX <b>41%</b></span><span><b>16k</b> tok</span><span><b>12m</b></span></div>
+          <div class="c-bottom">
+            <div class="c-meta"><span class="timer">12m 34</span><span>2/4 todos · active</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+
+        <div class="c-card go">
+          <div class="c-edge"></div>
+          <div class="c-top"><span class="led-lg"></span><span class="st">Working</span></div>
+          <div class="c-proj"><h3>inference-ai</h3><span class="branch">⎇ drafts · FOXTROT-19</span></div>
+          <div class="c-mid">⚙ Drafting outline of LLM-era engineering essay<span style="display:inline-block;width:6px;height:11px;background:var(--go);margin-left:3px;vertical-align:middle;animation:pulse 1s steps(2) infinite"></span></div>
+          <div class="c-stats"><span>CTX <b>67%</b></span><span><b>89k</b> tok</span><span><b>28m</b></span></div>
+          <div class="c-bottom">
+            <div class="c-meta"><span class="timer">28m 11</span><span>3/8 todos · active</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+
+        <div class="c-card go">
+          <div class="c-edge"></div>
+          <div class="c-top"><span class="led-lg"></span><span class="st">Working</span></div>
+          <div class="c-proj"><h3>docs-site</h3><span class="branch">⎇ v2-migrate · JULIET-3</span></div>
+          <div class="c-mid">⚙ Migrating MDX files to new schema<span style="display:inline-block;width:6px;height:11px;background:var(--go);margin-left:3px;vertical-align:middle;animation:pulse 1s steps(2) infinite"></span></div>
+          <div class="c-stats"><span>CTX <b>8%</b></span><span><b>1.2k</b> tok</span><span><b>4m</b></span></div>
+          <div class="c-bottom">
+            <div class="c-meta"><span class="timer">4m 09</span><span>0/2 todos · active</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="c-group-head"><span>Resolved &amp; stale</span><span class="ln"></span></div>
+      <div class="c-cards">
+        <div class="c-card done">
+          <div class="c-edge"></div>
+          <div class="c-top"><span class="led-lg"></span><span class="st">Done</span></div>
+          <div class="c-proj"><h3>invoices</h3><span class="branch">⎇ main · OSCAR-88</span></div>
+          <div class="c-mid">✓ completed — all todos done</div>
+          <div class="c-stats"><span>CTX <b>12%</b></span><span><b>4k</b> tok</span><span><b>—</b></span></div>
+          <div class="c-bottom">
+            <div class="c-meta"><span class="timer" style="color:var(--ink-dim)">—</span><span>5/5 todos · 3m ago</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+        <div class="c-card idle">
+          <div class="c-edge"></div>
+          <div class="c-top"><span class="led-lg"></span><span class="st">Stale</span></div>
+          <div class="c-proj"><h3>old-thing</h3><span class="branch">ZULU-11</span></div>
+          <div class="c-mid" style="color:var(--ink-dim)">stale — no signal for 14m</div>
+          <div class="c-stats"><span>CTX <b>0%</b></span><span><b>0</b> tok</span></div>
+          <div class="c-bottom">
+            <div class="c-meta"><span class="timer" style="color:var(--ink-dim)">—</span><span>0/0 · 14m ago</span></div>
+            <div class="gate gate-unbound gate-sm"><span class="gate-tag">— — —</span><span class="gate-row"><span class="gate-chev"><i>·</i><i>·</i><i>·</i></span><span class="gate-dest">NO LINK</span></span><span class="gate-runway gate-runway-off"></span></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- drawer (slides in from right) -->
+    <aside class="c-drawer">
+      <button class="close" onclick="document.querySelector('.C .c-drawer').classList.remove('open')">×</button>
+      <div class="d-badge"><span class="led-lg" style="background:var(--hold);box-shadow:0 0 10px var(--hold-glow)"></span><span class="st" style="color:var(--hold)">Holding · needs approval</span></div>
+      <h2><span class="callsign">DELTA-7</span> &nbsp; api-gateway</h2>
+      <div class="d-path">~/projects/api-gateway · ⎇ migrate · claude · #d7a3e2</div>
+      <button class="gate gate-bound" style="min-width:auto;width:100%">
+        <span class="gate-tag">GATE</span>
+        <span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span>
+        <span class="gate-runway"></span>
+      </button>
+      <div class="d-stats">
+        <div class="d-stat"><div class="k">Elapsed</div><div class="v">9m 02s</div></div>
+        <div class="d-stat"><div class="k">Tokens</div><div class="v">12k <span style="font-size:11px;color:var(--ink-dim)">in</span></div></div>
+        <div class="d-stat"><div class="k">Lines</div><div class="v">+47 / -3</div></div>
+        <div class="d-stat"><div class="k">CTX</div><div class="v">23%</div></div>
+      </div>
+      <h4>Current task</h4>
+      <p style="font-size:12.5px;line-height:1.5">⏸ awaiting approval · <code style="color:var(--hold);background:rgba(255,182,39,.08);padding:1px 5px;border-radius:2px">Bash: npm run db:migrate</code></p>
+      <h4>Claude todos · 2 / 5</h4>
+      <div class="todo done"><span class="box"></span><span>Inspect existing migration history</span></div>
+      <div class="todo done"><span class="box"></span><span>Stage v20260527 schema diff</span></div>
+      <div class="todo"><span class="box"></span><span>Run migration (waiting on approval)</span></div>
+      <div class="todo"><span class="box"></span><span>Verify foreign-key indexes</span></div>
+      <div class="todo"><span class="box"></span><span>Update docs/CHANGELOG.md</span></div>
+      <h4>Your checklist</h4>
+      <div class="todo"><span class="box"></span><span>Eyeball the down-migration</span></div>
+      <div class="todo done"><span class="box"></span><span>Snapshot DB before approving</span></div>
+    </aside>
+  </div>
+
+
+  <!-- ═══════════════════════ LAYOUT D ═══════════════════════ -->
+  <div class="frame D">
+    <header class="hd">
+      <div class="brand"><div class="radar"></div><div><h1>Ground Control</h1><div class="sub">session orchestrator · 6 tracked</div></div></div>
+      <div class="clock"><b>13:42:08</b><span>LIVE</span></div>
+      <div class="tally">
+        <div class="t hold"><span class="dot"></span><span class="num">1</span><span class="lbl">waiting</span></div>
+        <div class="t go"><span class="dot"></span><span class="num">3</span><span class="lbl">working</span></div>
+      </div>
+      <div class="cmd">⌕ <input placeholder="filter…" /><kbd>⌘K</kbd></div>
+    </header>
+
+    <aside class="d-side">
+      <h3>Sessions · 6</h3>
+      <div class="d-row hold sel">
+        <span class="led"></span>
+        <div class="info"><div class="proj">api-gateway</div><div class="task">⏸ wants db:migrate</div></div>
+        <span class="gate-mini">→ WARP</span>
+      </div>
+      <div class="d-row go">
+        <span class="led"></span>
+        <div class="info"><div class="proj">traffic-control</div><div class="task">Building board UI</div></div>
+        <span class="gate-mini">→ WARP</span>
+      </div>
+      <div class="d-row go">
+        <span class="led"></span>
+        <div class="info"><div class="proj">inference-ai</div><div class="task">Drafting outline</div></div>
+        <span class="gate-mini">→ WARP</span>
+      </div>
+      <div class="d-row go">
+        <span class="led"></span>
+        <div class="info"><div class="proj">docs-site</div><div class="task">Migrating MDX</div></div>
+        <span class="gate-mini">→ WARP</span>
+      </div>
+      <div class="d-row done">
+        <span class="led"></span>
+        <div class="info"><div class="proj">invoices</div><div class="task">✓ all done</div></div>
+        <span class="gate-mini">→ WARP</span>
+      </div>
+      <div class="d-row idle">
+        <span class="led"></span>
+        <div class="info"><div class="proj">old-thing</div><div class="task" style="color:var(--ink-faint)">stale · 14m</div></div>
+        <span class="gate-mini" style="color:var(--ink-faint);border-color:var(--hair);background:transparent">—</span>
+      </div>
+      <div class="add">+ all status filters · agents · feed</div>
+    </aside>
+
+    <main class="d-main">
+      <div class="d-head">
+        <div class="badge"><span class="led-lg" style="background:var(--hold);box-shadow:0 0 12px var(--hold-glow)"></span><span class="st" style="color:var(--hold)">Holding · needs approval</span></div>
+        <button class="gate gate-bound">
+          <span class="gate-tag">GATE</span>
+          <span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span>
+          <span class="gate-runway"></span>
+        </button>
+      </div>
+      <h2><span class="callsign" style="font-size:18px">DELTA-7</span> &nbsp; api-gateway</h2>
+      <div class="d-path">~/projects/api-gateway · ⎇ migrate · claude · opus-4-7 · #d7a3e2 · 14 msgs</div>
+
+      <div class="d-stats">
+        <div class="d-stat"><div class="k">Model</div><div class="v" style="font-size:13px">opus-4-7</div></div>
+        <div class="d-stat"><div class="k">Elapsed</div><div class="v">9m 02s</div></div>
+        <div class="d-stat"><div class="k">Tokens</div><div class="v">12k / 1.8k</div></div>
+        <div class="d-stat"><div class="k">Lines</div><div class="v">+47 / -3</div></div>
+        <div class="d-stat"><div class="k">CTX</div><div class="v">23%</div></div>
+      </div>
+
+      <div class="d-block">
+        <h4>Current task · claude · permission</h4>
+        <p style="font-size:13.5px;line-height:1.6;color:var(--ink)">⏸ awaiting approval ·
+          <code style="color:var(--hold);background:rgba(255,182,39,.08);padding:2px 7px;border-radius:3px;font-family:var(--font-mono)">Bash: npm run db:migrate -- --target=20260527</code>
+        </p>
+      </div>
+
+      <div class="d-block">
+        <h4>Transcript history</h4>
+        <div style="margin-bottom:12px">
+          <div style="font-size:9.5px;letter-spacing:1.5px;color:var(--ink-faint);text-transform:uppercase;margin-bottom:4px">first asked</div>
+          <div class="quoted">stage the migration that adds the indexed-org table and the read-replica trigger. don't run it yet, i want to look at the down-migration first.</div>
+        </div>
+        <div>
+          <div style="font-size:9.5px;letter-spacing:1.5px;color:var(--ink-faint);text-transform:uppercase;margin-bottom:4px">last said</div>
+          <div class="quoted">staged. ready to run when you give the word. the down-migration is in migrations/20260527_down.sql — wrote tests for it too.</div>
+        </div>
+      </div>
+
+      <div class="d-grid2">
+        <div class="d-block">
+          <h4>Claude todos · 2 / 5</h4>
+          <div class="todo done"><span class="box"></span><span>Inspect existing migration history</span></div>
+          <div class="todo done"><span class="box"></span><span>Stage v20260527 schema diff</span></div>
+          <div class="todo"><span class="box"></span><span>Run migration (waiting on approval)</span></div>
+          <div class="todo"><span class="box"></span><span>Verify foreign-key indexes</span></div>
+          <div class="todo"><span class="box"></span><span>Update docs/CHANGELOG.md</span></div>
+        </div>
+        <div class="d-block">
+          <h4>Your checklist</h4>
+          <div class="todo"><span class="box"></span><span>Eyeball the down-migration</span></div>
+          <div class="todo done"><span class="box"></span><span>Snapshot DB before approving</span></div>
+          <div style="color:var(--ink-faint);font-size:11px;margin-top:8px">+ add todo…</div>
+          <h4 style="margin-top:18px">Notes</h4>
+          <div style="font-size:11.5px;color:var(--ink-dim);font-style:italic">"Need to coordinate with @sara before the migration lands — they're holding the read replica steady."</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+</div>
+
+<div class="hint">switch layouts: <b>A B C D</b> · in C, click any card to open the drawer</div>
+
+<script>
+  // Layout switcher
+  const buttons = document.querySelectorAll('.switcher button');
+  const frames = document.querySelectorAll('.frame');
+  buttons.forEach(b => {
+    b.addEventListener('click', () => {
+      buttons.forEach(x => x.classList.remove('active'));
+      frames.forEach(f => f.classList.remove('active'));
+      b.classList.add('active');
+      document.querySelector('.frame.' + b.dataset.target).classList.add('active');
+    });
+  });
+  // Keyboard switcher A/B/C/D
+  document.addEventListener('keydown', (e) => {
+    const t = e.key.toUpperCase();
+    if (['A','B','C','D'].includes(t)) {
+      const b = document.querySelector('.switcher button[data-target="' + t + '"]');
+      if (b) b.click();
+    }
+    if (e.key === 'Escape') {
+      document.querySelector('.C .c-drawer').classList.remove('open');
+    }
+  });
+</script>
+</body>
+</html>

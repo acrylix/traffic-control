@@ -21,7 +21,7 @@ export function Board() {
   }
 
   return (
-    <main className="board">
+    <main className="board wall">
       {GROUPS.map((g) => {
         const items = sessions.filter((s) => g.match(s.status));
         if (items.length === 0) return null;
@@ -32,7 +32,9 @@ export function Board() {
               <span className="ln" />
               <span className="c">{items.length}</span>
             </div>
-            {items.map((s) => <Strip key={s.id} s={s} />)}
+            <div className="cards">
+              {items.map((s) => <Card key={s.id} s={s} />)}
+            </div>
           </div>
         );
       })}
@@ -40,94 +42,93 @@ export function Board() {
   );
 }
 
-function Strip({ s }: { s: Session }) {
+function Card({ s }: { s: Session }) {
   const { now, selectedId, select } = useStore();
   const focusSession = useStore((st) => st.focusSession);
   const meta = STATUS_META[s.status];
   const done = s.claudeTodos.filter((t) => t.status === 'completed').length;
   const total = s.claudeTodos.length;
   const ctxHi = s.metrics.ctxPct >= 80;
-  const timer = s.status === 'working' ? elapsed(s.startedAt, now) : (s.status === 'idle' || s.status === 'done' ? '—' : elapsed(s.startedAt, s.lastSeenAt));
+  const timer =
+    s.status === 'working' ? elapsed(s.startedAt, now)
+    : (s.status === 'idle' || s.status === 'done') ? '—'
+    : elapsed(s.startedAt, s.lastSeenAt);
 
   return (
-    <div className={`strip ${meta.cls} ${selectedId === s.id ? 'sel' : ''}`} onClick={() => select(s.id)}>
-      <div className="edge" />
-      <div className="light"><span className="led-lg" /><span className="st">{meta.label}</span></div>
+    <div className={`card ${meta.cls} ${selectedId === s.id ? 'sel' : ''}`} onClick={() => select(s.id)}>
+      <div className="c-edge" />
 
-      <div className="body">
-        <div className="row1">
-          <span className="callsign" title={`session id · ${s.id}`}>{s.callsign}</span>
-          <span className="call">{s.project}</span>
-          {s.branch && <span className="branch">⎇ {s.branch}</span>}
-          <span className={`chip cli-${s.cli}`}>{s.cli}</span>
-          {s.model && <span className="chip">{s.model}</span>}
-          {s.permissionMode && s.permissionMode !== 'default' &&
-            <span className={`chip perm-${s.permissionMode}`}>{s.permissionMode}</span>}
-          {s.effortLevel && s.effortLevel !== 'medium' &&
-            <span className={`chip effort effort-${s.effortLevel}`} title={`effort: ${s.effortLevel}`}>{s.effortLevel}</span>}
-          {s.thinkingEnabled && <span className="chip thinking" title="extended thinking enabled">💭</span>}
-        </div>
-        <div className="task">
-          {s.status === 'working' ? <>⚙ {s.task}<span className="cursor" /></>
-            : s.status === 'waiting' ? <><span className="tk-ico">⏸</span> {s.task}</>
-            : s.status === 'done' ? <>✓ {s.task}</>
-            : s.status === 'blocked' ? <>✕ {s.task}</>
-            : <>{s.task}</>}
-        </div>
+      <div className="c-top">
+        <span className="led-lg" />
+        <span className="c-st">{meta.label}</span>
+        {s.branch && <span className="c-branch">⎇ {s.branch}</span>}
       </div>
 
-      <div className="gauge">
-        <div className="g-lbl"><span>CTX</span><b>{s.metrics.ctxPct}%</b></div>
+      <div className="c-proj">
+        <span className="callsign" title={`session id · ${s.id}`}>{s.callsign}</span>
+        <h3>{s.project}</h3>
+      </div>
+
+      <div className="c-task">
+        {s.status === 'working' ? <>⚙ {s.task}<span className="cursor" /></>
+          : s.status === 'waiting' ? <><span className="tk-ico">⏸</span> {s.task}</>
+          : s.status === 'done' ? <>✓ {s.task}</>
+          : s.status === 'blocked' ? <>✕ {s.task}</>
+          : <>{s.task}</>}
+      </div>
+
+      <div className="c-ctx">
+        <div className="c-ctx-lbl"><span>CTX</span><b>{s.metrics.ctxPct}%</b></div>
         <div className={`bar ctx ${ctxHi ? 'hi' : ''}`}><i style={{ width: `${s.metrics.ctxPct}%` }} /></div>
-        <div className="toks">{ks(s.metrics.tokensIn + s.metrics.tokensOut)} tok</div>
-      </div>
-
-      <div className="meta">
-        <div className="timer">{timer}</div>
-        <div className="seen">{s.status === 'working' ? 'active now' : ago(s.lastSeenAt, now)}</div>
-        <span className="todo-pill">◴ <b>{done}</b>/{total}</span>
-      </div>
-
-      {s.terminal ? (
-        <button
-          type="button"
-          className="gate gate-bound"
-          title={`Jump to ${s.terminal.app}${s.terminal.title ? ' · ' + s.terminal.title : ''}`}
-          aria-label={`Jump to ${s.terminal.app}`}
-          onClick={(e) => { e.stopPropagation(); focusSession(s.id); }}
-        >
-          <span className="gate-tag">GATE</span>
-          <span className="gate-row">
-            <span className="gate-chev" aria-hidden="true">
-              <i>›</i><i>›</i><i>›</i>
-            </span>
-            <span className="gate-dest">{shortAppName(s.terminal.app)}</span>
-          </span>
-          <span className="gate-runway" aria-hidden="true" />
-        </button>
-      ) : (
-        <div
-          className="gate gate-unbound"
-          title="No terminal bound — send a prompt in your terminal to bind this session"
-          aria-label="Terminal not bound"
-        >
-          <span className="gate-tag">— — —</span>
-          <span className="gate-row">
-            <span className="gate-chev" aria-hidden="true">
-              <i>·</i><i>·</i><i>·</i>
-            </span>
-            <span className="gate-dest">NO LINK</span>
-          </span>
-          <span className="gate-runway gate-runway-off" aria-hidden="true" />
+        <div className="c-stats">
+          <span>{ks(s.metrics.tokensIn + s.metrics.tokensOut)} tok</span>
+          <span>◴ {done}/{total}</span>
+          <span className="c-timer">{timer}</span>
         </div>
-      )}
+      </div>
+
+      {/* Footer row — pinned to ~62px to give the gate its native (strip)
+          proportions, regardless of how tall the card body grew. */}
+      <div className="c-bot">
+        <div className="c-meta">
+          <span className="seen">{s.status === 'working' ? 'active now' : ago(s.lastSeenAt, now)}</span>
+          {s.model && <span className="c-model">{s.model}</span>}
+        </div>
+
+        {s.terminal ? (
+          <button
+            type="button"
+            className="gate gate-bound gate-sm"
+            title={`Jump to ${s.terminal.app}${s.terminal.title ? ' · ' + s.terminal.title : ''}`}
+            aria-label={`Jump to ${s.terminal.app}`}
+            onClick={(e) => { e.stopPropagation(); focusSession(s.id); }}
+          >
+            <span className="gate-tag">GATE</span>
+            <span className="gate-row">
+              <span className="gate-chev" aria-hidden="true"><i>›</i><i>›</i><i>›</i></span>
+              <span className="gate-dest">{shortAppName(s.terminal.app)}</span>
+            </span>
+            <span className="gate-runway" aria-hidden="true" />
+          </button>
+        ) : (
+          <div
+            className="gate gate-unbound gate-sm"
+            title="No terminal bound — send a prompt in your terminal to bind this session"
+            aria-label="Terminal not bound"
+          >
+            <span className="gate-tag">— — —</span>
+            <span className="gate-row">
+              <span className="gate-chev" aria-hidden="true"><i>·</i><i>·</i><i>·</i></span>
+              <span className="gate-dest">NO LINK</span>
+            </span>
+            <span className="gate-runway gate-runway-off" aria-hidden="true" />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-// Compact, fixed-width destination label for the gate.
-// Most terminal apps have predictable short names; the rest fall back to
-// uppercased first 6 chars so the gate column never gets stretched.
 function shortAppName(app: string): string {
   const map: Record<string, string> = {
     WarpTerminal: 'WARP',

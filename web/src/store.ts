@@ -58,12 +58,13 @@ export const useStore = create<GCState>((set) => ({
         try {
           const snap: Snapshot = JSON.parse(ev.data);
           set((s) => {
-            // keep selection if it still exists, else auto-select first "needs you"
+            // Only clear selection if the selected session vanished (e.g.
+            // dismissed). Don't auto-re-select after a user closes the drawer
+            // — null is treated as an explicit "no detail open" state.
             let selectedId = s.selectedId;
-            const ids = new Set(snap.sessions.map((x) => x.id));
-            if (!selectedId || !ids.has(selectedId)) {
-              const needy = snap.sessions.find((x) => x.status === 'waiting' || x.status === 'blocked');
-              selectedId = (needy ?? snap.sessions[0])?.id ?? null;
+            if (selectedId) {
+              const ids = new Set(snap.sessions.map((x) => x.id));
+              if (!ids.has(selectedId)) selectedId = null;
             }
             return { sessions: snap.sessions, tally: snap.tally, rateLimits: snap.rateLimits, now: snap.now, selectedId };
           });

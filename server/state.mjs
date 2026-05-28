@@ -111,6 +111,7 @@ export function freshSession(id) {
     lastAssistantText: null,  // most recent assistant text block (from transcript)
     messageCount: 0,          // total messages observed (backfill + live)
     backfilled: false,        // transcript scan attempted at least once
+    transcriptPath: null,     // remembered so the stale sweep can stat it
     metrics: {
       ctxPct: 0, costUsd: 0, tokensIn: 0, tokensOut: 0,
       durationMs: 0, apiDurationMs: 0,
@@ -200,13 +201,7 @@ export function applyEvent(s, kind, n, cli = 'claude') {
 
     case 'stop':
       s.lastStopAt = Date.now();
-      s.permission = null;
-      // turn ended → waiting for you, unless every todo is done → done
-      if (s.claudeTodos.length && s.claudeTodos.every((t) => t.status === 'completed')) {
-        setStatus(s, 'done', 'all-todos-complete');
-      } else {
-        setStatus(s, 'waiting', 'turn-end');
-      }
+      endTurn(s, 'turn-end');
       pushEvent(s, 'stop', 'turn ended');
       break;
 
@@ -222,6 +217,22 @@ export function applyEvent(s, kind, n, cli = 'claude') {
 function setStatus(s, status, reason) {
   s.status = status;
   s.reason = reason;
+}
+
+/**
+ * "Turn over" transition — shared by the explicit Stop hook, the transcript
+ * `system:turn_duration` / `system:stop_hook_summary` messages (which fire
+ * after a clean stop), and the stuck-working sweep (when both the transcript
+ * and hook stream go silent, i.e. ESC-interrupt). Sets waiting unless every
+ * todo is marked done, in which case the session graduates to `done`.
+ */
+export function endTurn(s, reason = 'turn-end') {
+  s.permission = null;
+  if (s.claudeTodos.length && s.claudeTodos.every((t) => t.status === 'completed')) {
+    setStatus(s, 'done', 'all-todos-complete');
+  } else {
+    setStatus(s, 'waiting', reason);
+  }
 }
 
 function absorbMetrics(s, n) {

@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ground Control — wallboard variants</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;0,800&family=Saira+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg:#08090b; --bg-grid:#0d0f12; --panel:#0f1216; --panel-2:#14181d;
+  --hair:#1c2128; --hair-lit:#283039;
+  --ink:#c9d1d9; --ink-dim:#6e7681; --ink-faint:#424a53;
+  --go:#34e29a; --hold:#ffb627; --stop:#ff5d5d; --done:#4fc3e8; --idle:#5a636e;
+  --go-glow:rgba(52,226,154,.55); --hold-glow:rgba(255,182,39,.6);
+  --stop-glow:rgba(255,93,93,.55); --done-glow:rgba(79,195,232,.45);
+  --font-mono:'JetBrains Mono', ui-monospace, monospace;
+  --font-cond:'Saira Condensed','JetBrains Mono',sans-serif;
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+html, body { height:100%; }
+body {
+  background:var(--bg); color:var(--ink);
+  font-family:var(--font-mono); font-size:13px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  background-image:
+    radial-gradient(900px 500px at 88% -10%, rgba(79,195,232,.06), transparent 60%),
+    radial-gradient(700px 400px at 0% 110%, rgba(52,226,154,.05), transparent 60%),
+    linear-gradient(var(--bg-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 38px 38px, 38px 38px;
+}
+
+/* ─── switcher ─── */
+.switcher {
+  position:fixed; top:12px; left:50%; transform:translateX(-50%);
+  z-index:10000; display:flex; gap:6px;
+  background:rgba(15,18,22,.92); border:1px solid var(--hair-lit);
+  border-radius:6px; padding:5px; backdrop-filter:blur(8px);
+  box-shadow:0 10px 30px rgba(0,0,0,.5);
+}
+.switcher button {
+  appearance:none; background:transparent; border:1px solid transparent;
+  color:var(--ink-dim); cursor:pointer; padding:7px 12px;
+  font-family:var(--font-cond); font-weight:700; font-size:11px;
+  letter-spacing:1.6px; text-transform:uppercase; border-radius:4px;
+  transition:all .12s;
+}
+.switcher button:hover { color:var(--ink); }
+.switcher button.active {
+  background:rgba(52,226,154,.10); color:var(--go);
+  border-color:rgba(52,226,154,.35); text-shadow:0 0 8px var(--go-glow);
+}
+.switcher .sub {
+  font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint);
+  letter-spacing:.8px; padding:0 8px; display:flex; align-items:center;
+}
+.hint {
+  position:fixed; bottom:12px; left:12px; right:auto;
+  font-size:10px; color:var(--ink-faint); letter-spacing:1px;
+  text-transform:uppercase; font-family:var(--font-cond);
+  background:rgba(15,18,22,.85); border:1px solid var(--hair);
+  padding:5px 10px; border-radius:3px; z-index:10000;
+}
+.hint b { color:var(--ink-dim); }
+
+/* ─── stage ─── */
+.stage { height:100vh; overflow:hidden; }
+.stage > .frame { height:100%; display:none; }
+.stage > .frame.active { display:grid; }
+
+/* ─── header ─── */
+.hd {
+  display:flex; align-items:center; gap:18px; padding:0 18px;
+  height:56px; border-bottom:1px solid var(--hair);
+  background:linear-gradient(180deg,#0c0e11,#090a0c); position:relative;
+}
+.hd::after {
+  content:""; position:absolute; left:0; right:0; bottom:-1px; height:1px;
+  background:linear-gradient(90deg, transparent, var(--go-glow), transparent);
+  opacity:.4;
+}
+.brand { display:flex; align-items:center; gap:11px; }
+.radar { width:26px; height:26px; border-radius:50%; border:1px solid var(--hair-lit);
+  position:relative; overflow:hidden;
+  background:radial-gradient(circle, rgba(52,226,154,.08), transparent 70%);
+}
+.radar::before { content:""; position:absolute; inset:0;
+  background:conic-gradient(from 0deg, transparent 0 300deg, var(--go-glow) 360deg);
+  animation:sweep 3.4s linear infinite;
+}
+.radar::after { content:""; position:absolute; inset:38%; border-radius:50%;
+  background:var(--go); box-shadow:0 0 6px var(--go-glow);
+}
+@keyframes sweep { to { transform:rotate(360deg); } }
+.brand h1 { font-family:var(--font-cond); font-weight:800; font-size:18px;
+  letter-spacing:3.5px; text-transform:uppercase; line-height:1; }
+.brand .sub { font-size:9.5px; letter-spacing:2px; color:var(--ink-faint);
+  text-transform:uppercase; margin-top:2px; }
+.clock { font-variant-numeric:tabular-nums; font-size:12px; letter-spacing:1px;
+  color:var(--ink-dim); border-left:1px solid var(--hair); border-right:1px solid var(--hair);
+  padding:0 18px; height:34px; display:flex; flex-direction:column; justify-content:center; }
+.clock b { color:var(--ink); font-weight:700; }
+.clock span { font-size:9px; letter-spacing:2px; color:var(--ink-faint); }
+.tally { display:flex; gap:8px; }
+.tally .t { display:flex; align-items:center; gap:7px; padding:5px 11px;
+  border:1px solid var(--hair); background:var(--panel); border-radius:3px; }
+.tally .dot { width:8px; height:8px; border-radius:50%; }
+.tally .num { font-family:var(--font-cond); font-weight:700; font-size:18px; line-height:1; font-variant-numeric:tabular-nums; }
+.tally .lbl { font-size:9px; letter-spacing:1.5px; color:var(--ink-faint); text-transform:uppercase; }
+.t.go .dot { background:var(--go); box-shadow:0 0 7px var(--go-glow); }
+.t.hold .dot { background:var(--hold); box-shadow:0 0 7px var(--hold-glow); }
+.t.stop .dot { background:var(--stop); box-shadow:0 0 7px var(--stop-glow); }
+.cmd { margin-left:auto; display:flex; align-items:center; gap:10px;
+  background:var(--panel); border:1px solid var(--hair); padding:7px 12px;
+  border-radius:4px; width:280px; color:var(--ink-dim); }
+.cmd input { background:none; border:none; outline:none; color:var(--ink);
+  font-family:var(--font-mono); font-size:12px; width:100%; }
+.cmd kbd { font-family:var(--font-mono); font-size:10px; color:var(--ink-faint);
+  border:1px solid var(--hair-lit); border-radius:3px; padding:1px 5px; }
+
+/* ─── shared atoms ─── */
+.led-lg { width:11px; height:11px; border-radius:50%; flex:none; display:inline-block; }
+.go   .led-lg { background:var(--go);   box-shadow:0 0 10px var(--go-glow); }
+.hold .led-lg { background:var(--hold); box-shadow:0 0 10px var(--hold-glow); animation:pulse 1.8s ease-in-out infinite; }
+.stop .led-lg { background:var(--stop); box-shadow:0 0 10px var(--stop-glow); }
+.done .led-lg { background:var(--done); box-shadow:0 0 10px var(--done-glow); }
+.idle .led-lg { background:var(--idle); }
+@keyframes pulse { 50% { opacity:.55; } }
+.callsign { font-family:var(--font-cond); font-weight:800; font-size:13px;
+  letter-spacing:2px; color:var(--ink); text-transform:uppercase; }
+
+/* ─── gate (jump button) ─── */
+.gate {
+  appearance:none; border:none; border-left:1px solid var(--hair);
+  position:relative; overflow:hidden; padding:9px 11px 10px;
+  display:flex; flex-direction:column; justify-content:space-between; align-items:stretch;
+  background:transparent; cursor:pointer; text-align:left;
+  font-family:var(--font-cond);
+  transition:background .15s, border-left-color .15s;
+}
+.gate-bound { background:linear-gradient(180deg, rgba(52,226,154,.05), rgba(52,226,154,.13)); }
+.gate-bound::before { content:""; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(120% 75% at 110% 50%, rgba(52,226,154,.20), transparent 62%);
+  opacity:.55; transition:opacity .2s; }
+.gate-bound:hover { background:linear-gradient(180deg, rgba(52,226,154,.10), rgba(52,226,154,.22));
+  border-left-color:rgba(52,226,154,.55); }
+.gate-bound:hover::before { opacity:1; }
+.gate-bound:active { background:linear-gradient(180deg, rgba(52,226,154,.30), rgba(52,226,154,.42)); transform:scale(.97); }
+.gate-unbound {
+  cursor:default;
+  background:repeating-linear-gradient(135deg, transparent 0 6px, rgba(255,255,255,.018) 6px 8px);
+}
+.gate-tag { font-size:8.5px; letter-spacing:2.5px; font-weight:700; color:var(--ink-faint);
+  text-transform:uppercase; position:relative; z-index:1; }
+.gate-bound .gate-tag { color:rgba(52,226,154,.65); }
+.gate-row { display:flex; align-items:baseline; gap:6px; position:relative; z-index:1; line-height:1; }
+.gate-chev { display:inline-flex; align-items:baseline; font-weight:800; font-size:15px; line-height:1;
+  letter-spacing:-1px; color:var(--go); }
+.gate-unbound .gate-chev { color:var(--ink-faint); letter-spacing:2px; }
+.gate-chev i { display:inline-block; font-style:normal; text-shadow:0 0 6px var(--go-glow); }
+.gate-bound .gate-chev i { opacity:.2; animation:gate-march 1.5s ease-in-out infinite; }
+.gate-bound .gate-chev i:nth-child(2) { animation-delay:.18s; }
+.gate-bound .gate-chev i:nth-child(3) { animation-delay:.36s; }
+.gate-bound:hover .gate-chev i { animation-duration:.65s; }
+.gate-unbound .gate-chev i { opacity:.4; text-shadow:none; }
+@keyframes gate-march {
+  0%   { opacity:.15; transform:translateX(-3px); }
+  45%  { opacity:1;   transform:translateX(2px); }
+  100% { opacity:.15; transform:translateX(-3px); }
+}
+.gate-dest { font-weight:800; font-size:16px; line-height:1; letter-spacing:1.4px;
+  text-transform:uppercase; color:var(--go); text-shadow:0 0 9px var(--go-glow);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gate-unbound .gate-dest { font-size:10.5px; font-weight:700; color:var(--ink-faint); text-shadow:none; }
+.gate-runway { height:3px; border-radius:1px;
+  background:repeating-linear-gradient(90deg, var(--go) 0 5px, transparent 5px 9px);
+  box-shadow:0 0 8px var(--go-glow); opacity:.5; transition:opacity .15s;
+  position:relative; z-index:1; }
+.gate-bound:hover .gate-runway { opacity:1; }
+.gate-runway-off { background:repeating-linear-gradient(90deg, var(--ink-faint) 0 3px, transparent 3px 7px);
+  box-shadow:none; opacity:.25; }
+.gate.gate-sm { padding:6px 9px 7px; }
+.gate.gate-sm .gate-tag { font-size:7.5px; letter-spacing:2px; }
+.gate.gate-sm .gate-dest { font-size:13px; letter-spacing:1.2px; }
+.gate.gate-sm .gate-chev { font-size:13px; }
+
+/* ─── wall (cards) ─── */
+.wall { padding:14px 18px 22px; overflow-y:auto; }
+.group-head { display:flex; align-items:baseline; gap:14px; margin:12px 0 10px;
+  font-family:var(--font-cond); text-transform:uppercase; letter-spacing:2px;
+  font-size:12px; color:var(--ink-dim); }
+.group-head .ln { flex:1; height:1px; background:var(--hair); }
+.group-head .c { font-size:10px; color:var(--ink-faint); }
+.cards { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:10px; }
+.card {
+  background:linear-gradient(180deg, var(--panel), #0e1115);
+  border:1px solid var(--hair); border-radius:6px;
+  position:relative; overflow:hidden; cursor:pointer;
+  display:grid; grid-template-rows:auto auto 1fr auto; min-height:150px;
+  transition:border-color .14s, transform .14s;
+}
+.card:hover { border-color:var(--hair-lit); transform:translateY(-2px);
+  box-shadow:0 6px 20px rgba(0,0,0,.4); }
+.card.sel { border-color:rgba(52,226,154,.55); box-shadow:inset 0 0 0 1px rgba(52,226,154,.35), 0 6px 20px rgba(0,0,0,.4); }
+.card .edge { position:absolute; top:0; left:0; right:0; height:3px; }
+.card.go   .edge { background:var(--go);   box-shadow:0 0 10px var(--go-glow); }
+.card.hold .edge { background:var(--hold); box-shadow:0 0 10px var(--hold-glow); }
+.card.done .edge { background:var(--done); box-shadow:0 0 10px var(--done-glow); }
+.card.idle .edge { background:var(--idle); }
+.card .top { padding:14px 14px 6px; display:flex; align-items:center; gap:9px; }
+.card .top .st { font-family:var(--font-cond); font-weight:800; font-size:11px;
+  letter-spacing:1.8px; text-transform:uppercase; }
+.card.go   .top .st { color:var(--go); }
+.card.hold .top .st { color:var(--hold); }
+.card.done .top .st { color:var(--done); }
+.card.idle .top .st { color:var(--idle); }
+.card .proj { padding:0 14px 8px; }
+.card .proj h3 { font-family:var(--font-cond); font-weight:700; font-size:17px; letter-spacing:.5px; }
+.card .proj .branch { font-size:11px; color:var(--ink-dim); }
+.card .mid { padding:4px 14px 10px; color:var(--ink); font-size:12px; line-height:1.4; }
+.card .stats { display:flex; gap:14px; padding:0 14px 12px;
+  font-size:10px; color:var(--ink-faint); font-variant-numeric:tabular-nums; }
+.card .stats b { color:var(--ink); font-weight:700; }
+.card .bot { border-top:1px solid var(--hair); display:grid;
+  grid-template-columns:1fr 110px; align-items:stretch; }
+.card .meta { padding:8px 12px; display:flex; flex-direction:column; gap:4px;
+  font-size:10px; color:var(--ink-dim); }
+.card .meta .timer { font-family:var(--font-cond); font-weight:700; font-size:14px; color:var(--ink); }
+
+/* ─── detail (shared block reused by all variants) ─── */
+.dt-head { display:flex; align-items:center; gap:14px; margin-bottom:4px; }
+.dt-head .badge { display:flex; align-items:center; gap:9px; }
+.dt-head .st { font-family:var(--font-cond); font-weight:700; font-size:11px;
+  letter-spacing:2px; text-transform:uppercase; color:var(--hold); }
+.dt-h2 { font-size:19px; font-weight:700; margin-bottom:4px; }
+.dt-path { font-size:10.5px; color:var(--ink-faint); margin-bottom:14px; }
+.dt-stats { display:grid; grid-template-columns:repeat(4, 1fr); gap:1px;
+  background:var(--hair); border:1px solid var(--hair); border-radius:4px;
+  overflow:hidden; margin-bottom:18px; }
+.dt-stat { background:var(--panel); padding:10px 12px; }
+.dt-stat .k { font-size:9px; letter-spacing:1.5px; color:var(--ink-faint);
+  text-transform:uppercase; margin-bottom:3px; }
+.dt-stat .v { font-family:var(--font-cond); font-weight:700; font-size:17px;
+  color:var(--ink); font-variant-numeric:tabular-nums; }
+.dt h4 { font-size:10px; letter-spacing:2px; color:var(--ink-faint);
+  text-transform:uppercase; margin:14px 0 8px; }
+.dt-task { font-size:13px; line-height:1.5; margin-bottom:18px; color:var(--ink); }
+.todo { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:12px; color:var(--ink); }
+.todo .box { width:12px; height:12px; border:1px solid var(--ink-faint); border-radius:2px; flex:none; }
+.todo.done .box { background:var(--go); border-color:var(--go); box-shadow:0 0 6px var(--go-glow); }
+.todo.done span { color:var(--ink-dim); text-decoration:line-through; }
+.quoted { font-family:var(--font-mono); font-size:11.5px; color:var(--ink-dim);
+  line-height:1.5; padding-left:10px; border-left:2px solid rgba(52,226,154,.25); }
+
+/* ─── activity feed ─── */
+.feed h4 { font-size:10px; letter-spacing:2px; color:var(--ink-faint);
+  text-transform:uppercase; margin-bottom:10px; }
+.feed .e { font-size:11px; color:var(--ink-dim); padding:4px 0;
+  border-bottom:1px dashed var(--hair); }
+.feed .e b { color:var(--ink); font-weight:600; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   V1 — RIGHT DRAWER (slides over, resizable)
+   ═══════════════════════════════════════════════════════════════════════ */
+.V1 { grid-template-rows:56px 1fr; position:relative; --drawer-w:480px; }
+.V1 .drawer {
+  position:absolute; top:56px; right:0; bottom:0; width:var(--drawer-w);
+  background:linear-gradient(180deg, #0a0c0f, #08090b);
+  border-left:1px solid var(--hair-lit);
+  box-shadow:-16px 0 40px rgba(0,0,0,.55);
+  transform:translateX(100%); transition:transform .25s ease;
+  overflow-y:auto; padding:22px 28px 22px 28px;
+}
+.V1 .drawer.open { transform:translateX(0); }
+.V1 .drawer.resizing { transition:none; user-select:none; }
+.V1 .drawer::before { content:""; position:absolute; top:0; bottom:0; left:-1px; width:1px;
+  background:linear-gradient(180deg, transparent, var(--go-glow), transparent); opacity:.5;
+  pointer-events:none; }
+.V1 .drawer .close { position:absolute; top:14px; right:16px;
+  background:transparent; border:1px solid var(--hair); color:var(--ink-faint);
+  width:24px; height:24px; border-radius:3px; cursor:pointer; }
+.V1 .drawer .close:hover { color:var(--ink); border-color:var(--hair-lit); }
+.V1 .drawer .gate { border-left:none; border:1px solid rgba(52,226,154,.25);
+  border-radius:4px; margin-bottom:16px; min-height:64px; width:100%; }
+
+/* Resize handle — sits on the left edge of the drawer.
+   8px wide grab zone, 1px visible bar that lights up on hover/drag.
+   Three centered dots give a tactile "grippy" affordance. */
+.V1 .drawer .resize-handle {
+  position:absolute; top:0; bottom:0; left:-4px; width:8px;
+  cursor:ew-resize; z-index:5;
+  display:flex; align-items:center; justify-content:center;
+}
+.V1 .drawer .resize-handle::before {
+  content:""; position:absolute; top:0; bottom:0; left:4px; width:1px;
+  background:var(--hair-lit); transition:background .15s, box-shadow .15s, width .15s;
+}
+.V1 .drawer .resize-handle::after {
+  content:""; width:2px; height:36px; border-radius:1px;
+  background:repeating-linear-gradient(180deg,
+    var(--ink-faint) 0 3px, transparent 3px 6px);
+  opacity:0; transition:opacity .15s;
+  position:relative; z-index:1;
+}
+.V1 .drawer .resize-handle:hover::before,
+.V1 .drawer.resizing .resize-handle::before {
+  background:var(--go); box-shadow:0 0 12px var(--go-glow); width:2px; left:3px;
+}
+.V1 .drawer .resize-handle:hover::after,
+.V1 .drawer.resizing .resize-handle::after { opacity:.9; }
+.V1 .drawer.resizing { cursor:ew-resize; }
+
+/* Live width readout while dragging — small pill that appears next to the handle */
+.V1 .drawer .resize-readout {
+  position:absolute; top:12px; left:14px;
+  font-family:var(--font-cond); font-weight:700; font-size:10px;
+  letter-spacing:1.5px; color:var(--go); text-transform:uppercase;
+  background:rgba(52,226,154,.10); border:1px solid rgba(52,226,154,.4);
+  padding:3px 8px; border-radius:3px;
+  text-shadow:0 0 6px var(--go-glow);
+  opacity:0; transform:translateY(-4px); transition:opacity .12s, transform .12s;
+  pointer-events:none; z-index:6;
+}
+.V1 .drawer.resizing .resize-readout { opacity:1; transform:translateY(0); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   V2 — PERSISTENT RIGHT RAIL (always-on, no animation)
+   ═══════════════════════════════════════════════════════════════════════ */
+.V2 { grid-template-rows:56px 1fr; grid-template-columns:1fr 420px; }
+.V2 .hd { grid-column:1 / -1; }
+.V2 .wall { border-right:1px solid var(--hair); }
+.V2 .rail {
+  border-left:1px solid var(--hair);
+  background:linear-gradient(180deg, #0a0c0f, #08090b);
+  overflow-y:auto; padding:22px 24px;
+  position:relative;
+}
+.V2 .rail::before { content:""; position:absolute; top:0; bottom:0; left:-1px; width:1px;
+  background:linear-gradient(180deg, transparent, var(--go-glow), transparent); opacity:.4; }
+.V2 .rail .gate { border-left:none; border:1px solid rgba(52,226,154,.25);
+  border-radius:4px; margin-bottom:16px; min-height:64px; width:100%; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   V3 — BOTTOM SHEET (slides up from bottom)
+   ═══════════════════════════════════════════════════════════════════════ */
+.V3 { grid-template-rows:56px 1fr; position:relative; }
+.V3 .sheet {
+  position:absolute; left:0; right:0; bottom:0; height:62%;
+  background:linear-gradient(180deg, #0c0f13, #07080a);
+  border-top:1px solid var(--hair-lit);
+  box-shadow:0 -20px 50px rgba(0,0,0,.6);
+  transform:translateY(100%); transition:transform .28s cubic-bezier(.2,.7,.2,1);
+  overflow:hidden;
+  display:grid; grid-template-columns:1fr 360px;
+}
+.V3 .sheet.open { transform:translateY(0); }
+.V3 .sheet::before { content:""; position:absolute; left:0; right:0; top:-1px; height:1px;
+  background:linear-gradient(90deg, transparent, var(--go-glow), transparent); opacity:.6; }
+.V3 .sheet .handle {
+  position:absolute; top:6px; left:50%; transform:translateX(-50%);
+  width:40px; height:4px; border-radius:2px; background:var(--hair-lit);
+}
+.V3 .sheet .close { position:absolute; top:14px; right:18px;
+  background:transparent; border:1px solid var(--hair); color:var(--ink-faint);
+  width:24px; height:24px; border-radius:3px; cursor:pointer; z-index:5; }
+.V3 .sheet .main { padding:24px 28px 18px; overflow-y:auto; }
+.V3 .sheet .side { border-left:1px solid var(--hair);
+  background:linear-gradient(180deg, rgba(0,0,0,.18), transparent);
+  padding:24px 22px; overflow-y:auto; }
+.V3 .sheet .gate { border-left:none; border:1px solid rgba(52,226,154,.25);
+  border-radius:4px; min-height:60px; min-width:140px; margin-left:auto; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   V4 — INLINE EXPAND (clicked card grows in place)
+   ═══════════════════════════════════════════════════════════════════════ */
+.V4 { grid-template-rows:56px 1fr; }
+.V4 .cards { grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); }
+/* The expanded card spans 2 columns and shows extra rows of content */
+.V4 .card.expanded {
+  grid-column:span 2;
+  min-height:380px;
+  cursor:default;
+  border-color:rgba(52,226,154,.55);
+  box-shadow:inset 0 0 0 1px rgba(52,226,154,.35), 0 10px 30px rgba(0,0,0,.5);
+}
+.V4 .card.expanded .top { padding:16px 18px 6px; }
+.V4 .card.expanded .top .st { font-size:13px; }
+.V4 .card.expanded .proj h3 { font-size:21px; }
+.V4 .card.expanded .gate { border-left:none; border:1px solid rgba(52,226,154,.25);
+  border-radius:4px; min-height:48px; min-width:120px; margin-left:auto; }
+.V4 .card.expanded .expand-body {
+  padding:8px 18px 16px; display:grid; gap:14px;
+  grid-template-columns:1fr 1fr;
+  border-top:1px solid var(--hair); margin-top:4px;
+}
+.V4 .card.expanded .expand-body h4 { font-size:9.5px; letter-spacing:2px; color:var(--ink-faint);
+  text-transform:uppercase; margin:10px 0 6px; }
+.V4 .card.expanded .expand-body .todo { font-size:11.5px; }
+.V4 .card.expanded .expand-stats { display:grid; grid-template-columns:repeat(4,1fr);
+  gap:1px; background:var(--hair); border:1px solid var(--hair); border-radius:4px;
+  overflow:hidden; margin:8px 18px 0; }
+.V4 .card.expanded .expand-stats .s { background:var(--panel); padding:8px 10px; }
+.V4 .card.expanded .expand-stats .s .k { font-size:8.5px; letter-spacing:1.5px;
+  color:var(--ink-faint); text-transform:uppercase; }
+.V4 .card.expanded .expand-stats .s .v { font-family:var(--font-cond); font-weight:700;
+  font-size:15px; color:var(--ink); font-variant-numeric:tabular-nums; }
+.V4 .card.expanded .collapse {
+  position:absolute; top:10px; right:10px;
+  background:transparent; border:1px solid var(--hair); color:var(--ink-faint);
+  width:22px; height:22px; border-radius:3px; cursor:pointer; font-size:13px;
+}
+.V4 .card.expanded .collapse:hover { color:var(--ink); border-color:var(--hair-lit); }
+.V4 .card.expanded .bot { display:none; }  /* hide normal bottom row, gate moves to header */
+
+</style>
+</head>
+<body>
+
+<div class="switcher">
+  <span class="sub">WALLBOARD ·</span>
+  <button data-target="V1" class="active">V1 · Right drawer</button>
+  <button data-target="V2">V2 · Persistent rail</button>
+  <button data-target="V3">V3 · Bottom sheet</button>
+  <button data-target="V4">V4 · Inline expand</button>
+</div>
+
+<div class="stage">
+
+  <!-- ════════════════ V1 — RIGHT DRAWER ════════════════ -->
+  <div class="frame V1 active">
+    <header class="hd">
+      <div class="brand"><div class="radar"></div><div><h1>Ground Control</h1><div class="sub">session orchestrator · 6 tracked</div></div></div>
+      <div class="clock"><b>13:42:08</b><span>LIVE</span></div>
+      <div class="tally">
+        <div class="t hold"><span class="dot"></span><span class="num">1</span><span class="lbl">waiting</span></div>
+        <div class="t go"><span class="dot"></span><span class="num">3</span><span class="lbl">working</span></div>
+        <div class="t stop"><span class="dot"></span><span class="num">0</span><span class="lbl">blocked</span></div>
+      </div>
+      <div class="cmd">⌕ <input placeholder="filter…" /><kbd>⌘K</kbd></div>
+    </header>
+
+    <main class="wall">
+      <div class="group-head"><span>Needs you</span><span class="ln"></span><span class="c">1</span></div>
+      <div class="cards">
+        <div class="card hold sel" data-open="V1">
+          <div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Holding</span></div>
+          <div class="proj"><h3>api-gateway</h3><span class="branch">⎇ migrate · DELTA-7</span></div>
+          <div class="mid">⏸ wants to run <code style="color:var(--hold);background:rgba(255,182,39,.08);padding:0 4px;border-radius:2px">npm run db:migrate</code></div>
+          <div class="stats"><span>CTX <b>23%</b></span><span><b>12k</b> tok</span><span><b>9m</b></span></div>
+          <div class="bot">
+            <div class="meta"><span class="timer">9m 02</span><span>2/5 todos · 12s ago</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="group-head"><span>In motion</span><span class="ln"></span><span class="c">3</span></div>
+      <div class="cards">
+        <div class="card go" data-open="V1">
+          <div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Working</span></div>
+          <div class="proj"><h3>traffic-control</h3><span class="branch">⎇ main · TANGO-42</span></div>
+          <div class="mid">⚙ Building the board UI<span style="display:inline-block;width:6px;height:11px;background:var(--go);margin-left:3px;vertical-align:middle;animation:pulse 1s steps(2) infinite"></span></div>
+          <div class="stats"><span>CTX <b>41%</b></span><span><b>16k</b> tok</span><span><b>12m</b></span></div>
+          <div class="bot">
+            <div class="meta"><span class="timer">12m 34</span><span>2/4 todos · active</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+        <div class="card go" data-open="V1">
+          <div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Working</span></div>
+          <div class="proj"><h3>inference-ai</h3><span class="branch">⎇ drafts · FOXTROT-19</span></div>
+          <div class="mid">⚙ Drafting outline of LLM-era engineering essay<span style="display:inline-block;width:6px;height:11px;background:var(--go);margin-left:3px;vertical-align:middle;animation:pulse 1s steps(2) infinite"></span></div>
+          <div class="stats"><span>CTX <b>67%</b></span><span><b>89k</b> tok</span><span><b>28m</b></span></div>
+          <div class="bot">
+            <div class="meta"><span class="timer">28m 11</span><span>3/8 todos · active</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+        <div class="card go" data-open="V1">
+          <div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Working</span></div>
+          <div class="proj"><h3>docs-site</h3><span class="branch">⎇ v2-migrate · JULIET-3</span></div>
+          <div class="mid">⚙ Migrating MDX files to new schema<span style="display:inline-block;width:6px;height:11px;background:var(--go);margin-left:3px;vertical-align:middle;animation:pulse 1s steps(2) infinite"></span></div>
+          <div class="stats"><span>CTX <b>8%</b></span><span><b>1.2k</b> tok</span><span><b>4m</b></span></div>
+          <div class="bot">
+            <div class="meta"><span class="timer">4m 09</span><span>0/2 todos · active</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="group-head"><span>Resolved &amp; stale</span><span class="ln"></span><span class="c">2</span></div>
+      <div class="cards">
+        <div class="card done" data-open="V1">
+          <div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Done</span></div>
+          <div class="proj"><h3>invoices</h3><span class="branch">⎇ main · OSCAR-88</span></div>
+          <div class="mid">✓ completed — all todos done</div>
+          <div class="stats"><span>CTX <b>12%</b></span><span><b>4k</b> tok</span></div>
+          <div class="bot">
+            <div class="meta"><span class="timer" style="color:var(--ink-dim)">—</span><span>5/5 · 3m ago</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+        <div class="card idle" data-open="V1">
+          <div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Stale</span></div>
+          <div class="proj"><h3>old-thing</h3><span class="branch">ZULU-11</span></div>
+          <div class="mid" style="color:var(--ink-dim)">stale — no signal for 14m</div>
+          <div class="stats"><span>CTX <b>0%</b></span><span><b>0</b> tok</span></div>
+          <div class="bot">
+            <div class="meta"><span class="timer" style="color:var(--ink-dim)">—</span><span>0/0 · 14m ago</span></div>
+            <div class="gate gate-unbound gate-sm"><span class="gate-tag">— — —</span><span class="gate-row"><span class="gate-chev"><i>·</i><i>·</i><i>·</i></span><span class="gate-dest">NO LINK</span></span><span class="gate-runway gate-runway-off"></span></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="drawer dt open">
+      <div class="resize-handle" aria-label="Resize drawer" role="separator" aria-orientation="vertical"></div>
+      <div class="resize-readout">480 px</div>
+      <button class="close" onclick="document.querySelector('.V1 .drawer').classList.remove('open')">×</button>
+      <div class="dt-head"><div class="badge"><span class="led-lg" style="background:var(--hold);box-shadow:0 0 10px var(--hold-glow)"></span><span class="st">Holding · needs approval</span></div></div>
+      <div class="dt-h2"><span class="callsign">DELTA-7</span> &nbsp; api-gateway</div>
+      <div class="dt-path">~/projects/api-gateway · ⎇ migrate · claude · #d7a3e2</div>
+      <button class="gate gate-bound">
+        <span class="gate-tag">GATE</span>
+        <span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span>
+        <span class="gate-runway"></span>
+      </button>
+      <div class="dt-stats">
+        <div class="dt-stat"><div class="k">Elapsed</div><div class="v">9m 02s</div></div>
+        <div class="dt-stat"><div class="k">Tokens</div><div class="v">12k</div></div>
+        <div class="dt-stat"><div class="k">Lines</div><div class="v">+47/-3</div></div>
+        <div class="dt-stat"><div class="k">CTX</div><div class="v">23%</div></div>
+      </div>
+      <h4>Current task</h4>
+      <p class="dt-task">⏸ awaiting approval · <code style="color:var(--hold);background:rgba(255,182,39,.08);padding:1px 5px;border-radius:2px">Bash: npm run db:migrate</code></p>
+      <h4>Claude todos · 2 / 5</h4>
+      <div class="todo done"><span class="box"></span><span>Inspect existing migration history</span></div>
+      <div class="todo done"><span class="box"></span><span>Stage v20260527 schema diff</span></div>
+      <div class="todo"><span class="box"></span><span>Run migration (waiting on approval)</span></div>
+      <div class="todo"><span class="box"></span><span>Verify foreign-key indexes</span></div>
+      <div class="todo"><span class="box"></span><span>Update docs/CHANGELOG.md</span></div>
+      <h4>Your checklist</h4>
+      <div class="todo"><span class="box"></span><span>Eyeball the down-migration</span></div>
+      <div class="todo done"><span class="box"></span><span>Snapshot DB before approving</span></div>
+    </aside>
+  </div>
+
+
+  <!-- ════════════════ V2 — PERSISTENT RAIL ════════════════ -->
+  <div class="frame V2">
+    <header class="hd">
+      <div class="brand"><div class="radar"></div><div><h1>Ground Control</h1><div class="sub">session orchestrator · 6 tracked</div></div></div>
+      <div class="clock"><b>13:42:08</b><span>LIVE</span></div>
+      <div class="tally">
+        <div class="t hold"><span class="dot"></span><span class="num">1</span><span class="lbl">waiting</span></div>
+        <div class="t go"><span class="dot"></span><span class="num">3</span><span class="lbl">working</span></div>
+      </div>
+      <div class="cmd">⌕ <input placeholder="filter…" /><kbd>⌘K</kbd></div>
+    </header>
+
+    <main class="wall">
+      <div class="group-head"><span>Needs you</span><span class="ln"></span><span class="c">1</span></div>
+      <div class="cards">
+        <div class="card hold sel">
+          <div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Holding</span></div>
+          <div class="proj"><h3>api-gateway</h3><span class="branch">⎇ migrate · DELTA-7</span></div>
+          <div class="mid">⏸ wants to run <code style="color:var(--hold);background:rgba(255,182,39,.08);padding:0 4px;border-radius:2px">db:migrate</code></div>
+          <div class="stats"><span>CTX <b>23%</b></span><span><b>12k</b> tok</span></div>
+          <div class="bot"><div class="meta"><span class="timer">9m 02</span><span>2/5 · 12s ago</span></div>
+            <button class="gate gate-bound gate-sm"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="group-head"><span>In motion</span><span class="ln"></span><span class="c">3</span></div>
+      <div class="cards">
+        <div class="card go">
+          <div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Working</span></div>
+          <div class="proj"><h3>traffic-control</h3><span class="branch">⎇ main · TANGO-42</span></div>
+          <div class="mid">⚙ Building the board UI</div>
+          <div class="stats"><span>CTX <b>41%</b></span><span><b>16k</b> tok</span></div>
+          <div class="bot"><div class="meta"><span class="timer">12m 34</span><span>2/4 · active</span></div>
+            <button class="gate gate-bound gate-sm"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+        <div class="card go">
+          <div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Working</span></div>
+          <div class="proj"><h3>inference-ai</h3><span class="branch">⎇ drafts · FOXTROT-19</span></div>
+          <div class="mid">⚙ Drafting outline of LLM-era essay</div>
+          <div class="stats"><span>CTX <b>67%</b></span><span><b>89k</b> tok</span></div>
+          <div class="bot"><div class="meta"><span class="timer">28m 11</span><span>3/8 · active</span></div>
+            <button class="gate gate-bound gate-sm"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+        <div class="card go">
+          <div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Working</span></div>
+          <div class="proj"><h3>docs-site</h3><span class="branch">⎇ v2-migrate · JULIET-3</span></div>
+          <div class="mid">⚙ Migrating MDX files to new schema</div>
+          <div class="stats"><span>CTX <b>8%</b></span><span><b>1.2k</b> tok</span></div>
+          <div class="bot"><div class="meta"><span class="timer">4m 09</span><span>0/2 · active</span></div>
+            <button class="gate gate-bound gate-sm"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="group-head"><span>Resolved &amp; stale</span><span class="ln"></span><span class="c">2</span></div>
+      <div class="cards">
+        <div class="card done">
+          <div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Done</span></div>
+          <div class="proj"><h3>invoices</h3><span class="branch">OSCAR-88</span></div>
+          <div class="mid">✓ all todos done</div>
+          <div class="stats"><span>CTX <b>12%</b></span><span><b>4k</b> tok</span></div>
+          <div class="bot"><div class="meta"><span class="timer" style="color:var(--ink-dim)">—</span><span>5/5 · 3m ago</span></div>
+            <button class="gate gate-bound gate-sm"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+        <div class="card idle">
+          <div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Stale</span></div>
+          <div class="proj"><h3>old-thing</h3><span class="branch">ZULU-11</span></div>
+          <div class="mid" style="color:var(--ink-dim)">no signal for 14m</div>
+          <div class="stats"><span>CTX <b>0%</b></span></div>
+          <div class="bot"><div class="meta"><span class="timer" style="color:var(--ink-dim)">—</span><span>14m ago</span></div>
+            <div class="gate gate-unbound gate-sm"><span class="gate-tag">— — —</span><span class="gate-row"><span class="gate-chev"><i>·</i><i>·</i><i>·</i></span><span class="gate-dest">NO LINK</span></span><span class="gate-runway gate-runway-off"></span></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="rail dt">
+      <div class="dt-head"><div class="badge"><span class="led-lg" style="background:var(--hold);box-shadow:0 0 10px var(--hold-glow)"></span><span class="st">Holding · needs approval</span></div></div>
+      <div class="dt-h2"><span class="callsign">DELTA-7</span> &nbsp; api-gateway</div>
+      <div class="dt-path">~/projects/api-gateway · ⎇ migrate · #d7a3e2</div>
+      <button class="gate gate-bound">
+        <span class="gate-tag">GATE</span>
+        <span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span>
+        <span class="gate-runway"></span>
+      </button>
+      <div class="dt-stats">
+        <div class="dt-stat"><div class="k">Elapsed</div><div class="v">9m 02s</div></div>
+        <div class="dt-stat"><div class="k">Tokens</div><div class="v">12k</div></div>
+        <div class="dt-stat"><div class="k">Lines</div><div class="v">+47/-3</div></div>
+        <div class="dt-stat"><div class="k">CTX</div><div class="v">23%</div></div>
+      </div>
+      <h4>Current task</h4>
+      <p class="dt-task">⏸ awaiting approval · <code style="color:var(--hold);background:rgba(255,182,39,.08);padding:1px 5px;border-radius:2px">npm run db:migrate</code></p>
+      <h4>Claude todos · 2 / 5</h4>
+      <div class="todo done"><span class="box"></span><span>Inspect existing migration history</span></div>
+      <div class="todo done"><span class="box"></span><span>Stage v20260527 schema diff</span></div>
+      <div class="todo"><span class="box"></span><span>Run migration (waiting on approval)</span></div>
+      <div class="todo"><span class="box"></span><span>Verify foreign-key indexes</span></div>
+      <h4>Your checklist</h4>
+      <div class="todo"><span class="box"></span><span>Eyeball the down-migration</span></div>
+      <div class="todo done"><span class="box"></span><span>Snapshot DB before approving</span></div>
+    </aside>
+  </div>
+
+
+  <!-- ════════════════ V3 — BOTTOM SHEET ════════════════ -->
+  <div class="frame V3">
+    <header class="hd">
+      <div class="brand"><div class="radar"></div><div><h1>Ground Control</h1><div class="sub">session orchestrator · 6 tracked</div></div></div>
+      <div class="clock"><b>13:42:08</b><span>LIVE</span></div>
+      <div class="tally">
+        <div class="t hold"><span class="dot"></span><span class="num">1</span><span class="lbl">waiting</span></div>
+        <div class="t go"><span class="dot"></span><span class="num">3</span><span class="lbl">working</span></div>
+      </div>
+      <div class="cmd">⌕ <input placeholder="filter…" /><kbd>⌘K</kbd></div>
+    </header>
+
+    <main class="wall">
+      <div class="group-head"><span>Needs you</span><span class="ln"></span><span class="c">1</span></div>
+      <div class="cards">
+        <div class="card hold sel" data-open="V3">
+          <div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Holding</span></div>
+          <div class="proj"><h3>api-gateway</h3><span class="branch">⎇ migrate · DELTA-7</span></div>
+          <div class="mid">⏸ wants to run <code style="color:var(--hold);background:rgba(255,182,39,.08);padding:0 4px;border-radius:2px">db:migrate</code></div>
+          <div class="stats"><span>CTX <b>23%</b></span><span><b>12k</b> tok</span></div>
+          <div class="bot"><div class="meta"><span class="timer">9m 02</span><span>2/5 · 12s ago</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+      </div>
+      <div class="group-head"><span>In motion</span><span class="ln"></span><span class="c">3</span></div>
+      <div class="cards">
+        <div class="card go" data-open="V3"><div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Working</span></div>
+          <div class="proj"><h3>traffic-control</h3><span class="branch">⎇ main · TANGO-42</span></div>
+          <div class="mid">⚙ Building the board UI</div>
+          <div class="stats"><span>CTX <b>41%</b></span><span><b>16k</b> tok</span></div>
+          <div class="bot"><div class="meta"><span class="timer">12m 34</span><span>2/4 · active</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+        <div class="card go" data-open="V3"><div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Working</span></div>
+          <div class="proj"><h3>inference-ai</h3><span class="branch">⎇ drafts · FOXTROT-19</span></div>
+          <div class="mid">⚙ Drafting outline of LLM-era essay</div>
+          <div class="stats"><span>CTX <b>67%</b></span><span><b>89k</b> tok</span></div>
+          <div class="bot"><div class="meta"><span class="timer">28m 11</span><span>3/8 · active</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+        <div class="card go" data-open="V3"><div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Working</span></div>
+          <div class="proj"><h3>docs-site</h3><span class="branch">⎇ v2-migrate · JULIET-3</span></div>
+          <div class="mid">⚙ Migrating MDX to new schema</div>
+          <div class="stats"><span>CTX <b>8%</b></span><span><b>1.2k</b> tok</span></div>
+          <div class="bot"><div class="meta"><span class="timer">4m 09</span><span>0/2 · active</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+      </div>
+      <div class="group-head"><span>Resolved &amp; stale</span><span class="ln"></span><span class="c">2</span></div>
+      <div class="cards">
+        <div class="card done" data-open="V3"><div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Done</span></div>
+          <div class="proj"><h3>invoices</h3><span class="branch">OSCAR-88</span></div>
+          <div class="mid">✓ all todos done</div>
+          <div class="stats"><span>CTX <b>12%</b></span><span><b>4k</b> tok</span></div>
+          <div class="bot"><div class="meta"><span class="timer" style="color:var(--ink-dim)">—</span><span>5/5 · 3m ago</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+        <div class="card idle" data-open="V3"><div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Stale</span></div>
+          <div class="proj"><h3>old-thing</h3><span class="branch">ZULU-11</span></div>
+          <div class="mid" style="color:var(--ink-dim)">no signal for 14m</div>
+          <div class="stats"><span>CTX <b>0%</b></span></div>
+          <div class="bot"><div class="meta"><span class="timer" style="color:var(--ink-dim)">—</span><span>14m ago</span></div>
+            <div class="gate gate-unbound gate-sm"><span class="gate-tag">— — —</span><span class="gate-row"><span class="gate-chev"><i>·</i><i>·</i><i>·</i></span><span class="gate-dest">NO LINK</span></span><span class="gate-runway gate-runway-off"></span></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <section class="sheet open">
+      <div class="handle"></div>
+      <button class="close" onclick="document.querySelector('.V3 .sheet').classList.remove('open')">×</button>
+      <div class="main dt">
+        <div class="dt-head" style="margin-top:6px">
+          <div class="badge"><span class="led-lg" style="background:var(--hold);box-shadow:0 0 10px var(--hold-glow)"></span><span class="st">Holding · needs approval</span></div>
+          <button class="gate gate-bound"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+        </div>
+        <div class="dt-h2"><span class="callsign">DELTA-7</span> &nbsp; api-gateway</div>
+        <div class="dt-path">~/projects/api-gateway · ⎇ migrate · claude · #d7a3e2 · 14 msgs</div>
+        <div class="dt-stats">
+          <div class="dt-stat"><div class="k">Model</div><div class="v" style="font-size:13px">opus-4-7</div></div>
+          <div class="dt-stat"><div class="k">Elapsed</div><div class="v">9m 02s</div></div>
+          <div class="dt-stat"><div class="k">Tokens</div><div class="v">12k</div></div>
+          <div class="dt-stat"><div class="k">Lines</div><div class="v">+47/-3</div></div>
+        </div>
+        <h4>Current task</h4>
+        <p class="dt-task">⏸ awaiting approval · <code style="color:var(--hold);background:rgba(255,182,39,.08);padding:1px 5px;border-radius:2px">Bash: npm run db:migrate -- --target=20260527</code></p>
+        <h4>Transcript history</h4>
+        <div style="margin-bottom:10px"><div style="font-size:9.5px;letter-spacing:1.5px;color:var(--ink-faint);text-transform:uppercase;margin-bottom:4px">first asked</div>
+          <div class="quoted">stage the migration that adds the indexed-org table and the read-replica trigger. don't run it yet.</div></div>
+        <div style="font-size:9.5px;letter-spacing:1.5px;color:var(--ink-faint);text-transform:uppercase;margin-bottom:4px">last said</div>
+        <div class="quoted">staged. ready to run when you give the word. down-migration is in 20260527_down.sql.</div>
+      </div>
+      <aside class="side dt">
+        <h4>Claude todos · 2 / 5</h4>
+        <div class="todo done"><span class="box"></span><span>Inspect migration history</span></div>
+        <div class="todo done"><span class="box"></span><span>Stage v20260527 schema</span></div>
+        <div class="todo"><span class="box"></span><span>Run migration (waiting)</span></div>
+        <div class="todo"><span class="box"></span><span>Verify FK indexes</span></div>
+        <div class="todo"><span class="box"></span><span>Update CHANGELOG</span></div>
+        <h4 style="margin-top:18px">Your checklist</h4>
+        <div class="todo"><span class="box"></span><span>Eyeball the down-migration</span></div>
+        <div class="todo done"><span class="box"></span><span>Snapshot DB before approving</span></div>
+        <h4 style="margin-top:18px" class="feed-h">Activity</h4>
+        <div class="feed">
+          <div class="e"><b>12s</b> · permission · db:migrate</div>
+          <div class="e"><b>34s</b> · pre-tool · Read migrations</div>
+          <div class="e"><b>1m</b> · post-tool · TodoWrite</div>
+          <div class="e"><b>2m</b> · prompt · "run the migration"</div>
+        </div>
+      </aside>
+    </section>
+  </div>
+
+
+  <!-- ════════════════ V4 — INLINE EXPAND ════════════════ -->
+  <div class="frame V4">
+    <header class="hd">
+      <div class="brand"><div class="radar"></div><div><h1>Ground Control</h1><div class="sub">session orchestrator · 6 tracked</div></div></div>
+      <div class="clock"><b>13:42:08</b><span>LIVE</span></div>
+      <div class="tally">
+        <div class="t hold"><span class="dot"></span><span class="num">1</span><span class="lbl">waiting</span></div>
+        <div class="t go"><span class="dot"></span><span class="num">3</span><span class="lbl">working</span></div>
+      </div>
+      <div class="cmd">⌕ <input placeholder="filter…" /><kbd>⌘K</kbd></div>
+    </header>
+
+    <main class="wall">
+      <div class="group-head"><span>Needs you</span><span class="ln"></span><span class="c">1</span></div>
+      <div class="cards">
+        <!-- expanded card: api-gateway -->
+        <div class="card hold expanded">
+          <div class="edge"></div>
+          <button class="collapse">−</button>
+          <div class="top"><span class="led-lg"></span><span class="st">Holding</span>
+            <button class="gate gate-bound" onclick="event.stopPropagation()" style="margin-left:auto">
+              <span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span>
+            </button>
+          </div>
+          <div class="proj"><h3>api-gateway</h3><span class="branch">⎇ migrate · DELTA-7 · #d7a3e2</span></div>
+          <div class="mid">⏸ awaiting approval · <code style="color:var(--hold);background:rgba(255,182,39,.08);padding:1px 5px;border-radius:2px">Bash: npm run db:migrate -- --target=20260527</code></div>
+          <div class="expand-stats">
+            <div class="s"><div class="k">Elapsed</div><div class="v">9m 02</div></div>
+            <div class="s"><div class="k">Tokens</div><div class="v">12k</div></div>
+            <div class="s"><div class="k">Lines</div><div class="v">+47/-3</div></div>
+            <div class="s"><div class="k">CTX</div><div class="v">23%</div></div>
+          </div>
+          <div class="expand-body">
+            <div>
+              <h4>Claude todos · 2 / 5</h4>
+              <div class="todo done"><span class="box"></span><span>Inspect existing migration history</span></div>
+              <div class="todo done"><span class="box"></span><span>Stage v20260527 schema diff</span></div>
+              <div class="todo"><span class="box"></span><span>Run migration (waiting on approval)</span></div>
+              <div class="todo"><span class="box"></span><span>Verify foreign-key indexes</span></div>
+              <div class="todo"><span class="box"></span><span>Update CHANGELOG.md</span></div>
+            </div>
+            <div>
+              <h4>Your checklist</h4>
+              <div class="todo"><span class="box"></span><span>Eyeball the down-migration</span></div>
+              <div class="todo done"><span class="box"></span><span>Snapshot DB before approving</span></div>
+              <h4 style="margin-top:14px">Last said</h4>
+              <div class="quoted">staged. ready to run when you give the word. down-migration is in 20260527_down.sql.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group-head"><span>In motion</span><span class="ln"></span><span class="c">3</span></div>
+      <div class="cards">
+        <div class="card go"><div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Working</span></div>
+          <div class="proj"><h3>traffic-control</h3><span class="branch">⎇ main · TANGO-42</span></div>
+          <div class="mid">⚙ Building the board UI<span style="display:inline-block;width:6px;height:11px;background:var(--go);margin-left:3px;vertical-align:middle;animation:pulse 1s steps(2) infinite"></span></div>
+          <div class="stats"><span>CTX <b>41%</b></span><span><b>16k</b> tok</span></div>
+          <div class="bot"><div class="meta"><span class="timer">12m 34</span><span>2/4 · active</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+        <div class="card go"><div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Working</span></div>
+          <div class="proj"><h3>inference-ai</h3><span class="branch">⎇ drafts · FOXTROT-19</span></div>
+          <div class="mid">⚙ Drafting outline of LLM essay<span style="display:inline-block;width:6px;height:11px;background:var(--go);margin-left:3px;vertical-align:middle;animation:pulse 1s steps(2) infinite"></span></div>
+          <div class="stats"><span>CTX <b>67%</b></span><span><b>89k</b> tok</span></div>
+          <div class="bot"><div class="meta"><span class="timer">28m 11</span><span>3/8 · active</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+        <div class="card go"><div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Working</span></div>
+          <div class="proj"><h3>docs-site</h3><span class="branch">⎇ v2-migrate · JULIET-3</span></div>
+          <div class="mid">⚙ Migrating MDX files<span style="display:inline-block;width:6px;height:11px;background:var(--go);margin-left:3px;vertical-align:middle;animation:pulse 1s steps(2) infinite"></span></div>
+          <div class="stats"><span>CTX <b>8%</b></span><span><b>1.2k</b> tok</span></div>
+          <div class="bot"><div class="meta"><span class="timer">4m 09</span><span>0/2 · active</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="group-head"><span>Resolved &amp; stale</span><span class="ln"></span><span class="c">2</span></div>
+      <div class="cards">
+        <div class="card done"><div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Done</span></div>
+          <div class="proj"><h3>invoices</h3><span class="branch">OSCAR-88</span></div>
+          <div class="mid">✓ all todos done</div>
+          <div class="stats"><span>CTX <b>12%</b></span><span><b>4k</b> tok</span></div>
+          <div class="bot"><div class="meta"><span class="timer" style="color:var(--ink-dim)">—</span><span>5/5 · 3m ago</span></div>
+            <button class="gate gate-bound gate-sm" onclick="event.stopPropagation()"><span class="gate-tag">GATE</span><span class="gate-row"><span class="gate-chev"><i>›</i><i>›</i><i>›</i></span><span class="gate-dest">WARP</span></span><span class="gate-runway"></span></button>
+          </div>
+        </div>
+        <div class="card idle"><div class="edge"></div>
+          <div class="top"><span class="led-lg"></span><span class="st">Stale</span></div>
+          <div class="proj"><h3>old-thing</h3><span class="branch">ZULU-11</span></div>
+          <div class="mid" style="color:var(--ink-dim)">no signal for 14m</div>
+          <div class="stats"><span>CTX <b>0%</b></span></div>
+          <div class="bot"><div class="meta"><span class="timer" style="color:var(--ink-dim)">—</span><span>14m ago</span></div>
+            <div class="gate gate-unbound gate-sm"><span class="gate-tag">— — —</span><span class="gate-row"><span class="gate-chev"><i>·</i><i>·</i><i>·</i></span><span class="gate-dest">NO LINK</span></span><span class="gate-runway gate-runway-off"></span></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+</div>
+
+<div class="hint">switch variants: <b>1 2 3 4</b> · click a card to open · <b>esc</b> closes · V1: drag the left edge of the drawer to resize, double-click to reset</div>
+
+<script>
+  const buttons = document.querySelectorAll('.switcher button');
+  const frames = document.querySelectorAll('.frame');
+  buttons.forEach(b => {
+    b.addEventListener('click', () => {
+      buttons.forEach(x => x.classList.remove('active'));
+      frames.forEach(f => f.classList.remove('active'));
+      b.classList.add('active');
+      document.querySelector('.frame.' + b.dataset.target).classList.add('active');
+    });
+  });
+
+  // Keyboard 1/2/3/4
+  document.addEventListener('keydown', (e) => {
+    const i = parseInt(e.key, 10);
+    if (i >= 1 && i <= 4) {
+      const b = document.querySelector(`.switcher button[data-target="V${i}"]`);
+      if (b) b.click();
+    }
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.drawer.open, .sheet.open').forEach(el => el.classList.remove('open'));
+    }
+  });
+
+  // Card click → open drawer / sheet (V1, V3)
+  document.querySelectorAll('[data-open]').forEach(card => {
+    card.addEventListener('click', () => {
+      const target = card.dataset.open;
+      const t = document.querySelector(`.${target} .drawer, .${target} .sheet`);
+      if (t) t.classList.add('open');
+      // mark selected
+      card.parentElement.parentElement.querySelectorAll('.card.sel').forEach(s => s.classList.remove('sel'));
+      card.classList.add('sel');
+    });
+  });
+
+  // V1 drawer resize — drag left edge to widen / narrow.
+  // Clamp between MIN (360px) and 85% of viewport. Width is stored on the
+  // .V1 container as a CSS custom property so the drawer reflows instantly.
+  (() => {
+    const V1     = document.querySelector('.V1');
+    const drawer = V1.querySelector('.drawer');
+    const handle = drawer.querySelector('.resize-handle');
+    const readout= drawer.querySelector('.resize-readout');
+    const MIN = 360;
+    const max = () => Math.round(window.innerWidth * 0.85);
+
+    let startX = 0, startW = 0;
+
+    const onMove = (e) => {
+      const dx = startX - e.clientX;                 // drag left → grow
+      let w = Math.max(MIN, Math.min(max(), startW + dx));
+      V1.style.setProperty('--drawer-w', w + 'px');
+      readout.textContent = w + ' px';
+    };
+
+    const onUp = () => {
+      drawer.classList.remove('resizing');
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+
+    handle.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      startX = e.clientX;
+      startW = drawer.getBoundingClientRect().width;
+      readout.textContent = Math.round(startW) + ' px';
+      drawer.classList.add('resizing');
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp, { once: false });
+    });
+
+    // Double-click handle → snap back to default
+    handle.addEventListener('dblclick', () => {
+      V1.style.setProperty('--drawer-w', '480px');
+      readout.textContent = '480 px';
+      drawer.classList.add('resizing');
+      setTimeout(() => drawer.classList.remove('resizing'), 350);
+    });
+  })();
+</script>
+</body>
+</html>
